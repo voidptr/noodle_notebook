@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="/static/jquery/jquery.min.js"></script>
+<link href="/static/jquery/bootstrap.min.css" rel="stylesheet">
+<script src="/static/ckeditor/ckeditor.js"></script>
+<link rel="stylesheet" type="text/css" href="/static/css/main.css">
+<link rel="stylesheet" type="text/css" href="/static/css/normalize.css">
+<link rel="stylesheet" type="text/css" href="/static/css/style.css">
+<link rel="shortcut icon" href="static/img/favicon.gif">
+<script>
+
+    function setMessageDiv(msg)
+    {
+        var el = document.getElementById("message");
+        el.innerHTML = msg;
+    }
+
+    function tempAlert(msg,duration)
+    {
+        var el = document.createElement("div");
+        el.setAttribute("style","position:absolute;top:0%;left:10%;background-color:white;");
+        el.innerHTML = msg;
+        setTimeout(function(){
+          el.parentNode.removeChild(el);
+        },duration);
+        document.body.appendChild(el);
+    }
+
+    var saved = false;
+    var lastsaved;
+
+    CKEDITOR.plugins.registered['allowsave'] = {
+      init: function (editor) {
+         var command = editor.addCommand('save',
+         {
+              modes: { wysiwyg: 1, source: 1 },
+              exec: function (editor) { // Add here custom function for the save button
+                
+                var dta = editor.getData();
+
+                setMessageDiv("Saving...");
+
+                $.getJSON('/_save', {
+                  data: dta,
+                }, function(data) {
+                    saved = true
+                    lastsaved = dta
+
+                    setTimeout(function(){setMessageDiv("Success!")},500);
+                    setTimeout(function(){setMessageDiv("")},2000);
+                });
+              }
+         });
+         editor.ui.addButton && editor.ui.addButton('Save', { 
+                label: 'Save', 
+                command: 'save',
+                toolbar: 'document,10' });
+         editor.on('blur', function() {
+            checkSaved();
+         });
+      }
+    }
+
+
+</script>
+</head>
+<body>
+[ <a href="/" onclick="if (saved) { return true; } else { return confirm('Are you sure? Unsaved changes...') }">Home</a> ]<div id="message" style="position:absolute;top:0%;right:5%"></div>
+<div id="top"><!-- top toolbar --></div>
+<div style="height: calc(100% - 168px); overflow: auto; border: 0px solid #afafaf; padding: 20px; margin: 20px;">
+    <div contenteditable="true" id="inline1" style="height=100%; width: 100%; float: left; border: 5px; outline: none;">
+{% block content %}
+{% endblock content %}
+	</div>
+</div>
+<div id="bottom"><!--bottom toolbar--></div>
+<script>
+
+		// Turn off automatic editor creation first.
+		CKEDITOR.disableAutoInline = true;
+
+		CKEDITOR.inline( 'inline1', {
+			extraPlugins: 'sharedspace,allowsave,imagebrowser',
+			removePlugins: 'floatingspace,resize',
+			sharedSpaces: {
+				top: 'top',
+				bottom: 'bottom'
+			},
+            imageBrowser_listUrl: "/_browse_images"
+		});
+</script>
+</body>
+</html>
+

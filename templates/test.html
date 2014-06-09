@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<link href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css" rel="stylesheet">
+<script src="/static/ckeditor/ckeditor.js"></script>
+<script>
+
+		// This code is generally not necessary, but it is here to demonstrate
+		// how to customize specific editor instances on the fly. This fits well
+		// this demo because we have editable elements (like headers) that
+		// require less features.
+
+		// The "instanceCreated" event is fired for every editor instance created.
+		CKEDITOR.on( 'instanceCreated', function( event ) {
+			var editor = event.editor,
+				element = editor.element;
+
+			// Customize editors for headers and tag list.
+			// These editors don't need features like smileys, templates, iframes etc.
+			if ( element.is( 'h1', 'h2', 'h3' ) || element.getAttribute( 'id' ) == 'taglist' ) {
+				// Customize the editor configurations on "configLoaded" event,
+				// which is fired after the configuration file loading and
+				// execution. This makes it possible to change the
+				// configurations before the editor initialization takes place.
+				editor.on( 'configLoaded', function() {
+
+					// Remove unnecessary plugins to make the editor simpler.
+					editor.config.removePlugins = 'colorbutton,find,flash,font,' +
+						'forms,iframe,image,newpage,removeformat,' +
+						'smiley,specialchar,stylescombo,templates';
+
+					// Rearrange the layout of the toolbar.
+					editor.config.toolbarGroups = [
+						{ name: 'editing',		groups: [ 'basicstyles', 'links' ] },
+						{ name: 'undo' },
+						{ name: 'clipboard',	groups: [ 'selection', 'clipboard' ] },
+						{ name: 'about' }
+					];
+				});
+			}
+		});
+
+</script>
+<script>
+
+    CKEDITOR.plugins.registered['allowsave'] = {
+      init: function (editor) {
+         var command = editor.addCommand('save',
+         {
+              modes: { wysiwyg: 1, source: 1 },
+              exec: function (editor) { // Add here custom function for the save button
+                
+                var dta = CKEDITOR.instances.editor1.getData();
+
+                alert("POOPOO");
+//                alert(dta);
+
+                $.getJSON('/_add_numbers', {
+                  a: dta,
+                  b: $('input[name="b"]').val()
+                }, function(data) {
+                    alert(data.result);
+                });
+
+//                $.getJSON('/_add_numbers', {
+//                  a: $('input[name="a"]').val(),
+//                  b: $('input[name="b"]').val()
+//                }, function(data) {
+//                  //$("#result").text(data.result);
+//                  alert(data.result);
+//                });
+
+
+              //alert('You clicked the save button in CKEditor toolbar!');
+              }
+         });
+         editor.ui.addButton && editor.ui.addButton('Save', { 
+                label: 'Save', 
+                command: 'save',
+                toolbar: 'document,10' });
+//         editor.ui.addButton && editor.ui.addButton( 'Save', {
+//				label: editor.lang.allowsave.toolbar,
+//				command: 'save',
+//				toolbar: 'document,10'
+//			} );
+
+      }
+    }
+
+//    $(function() {
+//      var data = CKEDITOR.instances.editable.getData();
+
+//      $('a#calculate').bind('click', function() {
+//        $.getJSON('/_add_numbers', {
+//          a: $('input[name="a"]').val(),
+//          b: $('input[name="b"]').val()
+//        }, function(data) {
+//          $("#result").text(data.result);
+//        });
+//        return false;
+//      });
+//    });
+
+
+
+//    window.alert("hi");
+
+//    xmlhttp.open("POST","debug.py",true);
+//    xmlhttp.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+//    xmlhttp.send(data);
+
+    // Your code to save "data", usually through Ajax.
+</script>
+<script type=text/javascript>
+    $(function() {
+      $('a#calculate').bind('click', function() {
+        $.getJSON('/_add_numbers', {
+          a: $('input[name="a"]').val(),
+          b: $('input[name="b"]').val()
+        }, function(data) {
+          $("#result").text(data.result);
+        });
+        return false;
+      });
+    });
+</script>
+
+</head>
+<body>
+<div contenteditable="true">
+<h1>Week of May 26, 2014</h1>
+
+<h2>Monday, May 26, 2014</h2>
+
+<h3>Meeting w/ Charles</h3>
+
+<ul>
+<li>
+<p>talked about experiments, and my trouble finding a good cms for my lab notebooks.</p>
+</li><li>
+<p>Talked about how to implement the flag-based mate selection. Turns out there’s already something there:</p><ul>
+<li>
+<p>cHardwareCPU: bool Inst_HeadDivideMateSelect(cAvidaContext&amp; ctx)</p><ul>
+<li>
+<p>I’d need to add something so that it doesn’t do a binary selection. rather, I want to allow best matching for flags.</p>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</body>
+</html>

@@ -1,0 +1,3 @@
+[Notebook Location]
+path: ~/Dropbox/School\ Docs/Projects/LabNotebooksRepository/
+format: html

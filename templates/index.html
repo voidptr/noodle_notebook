@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" type="text/css" href="/static/css/main.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/normalize.css">
+    <link rel="stylesheet" type="text/css" href="/static/css/style.css">
+    <link rel="shortcut icon" href="static/img/favicon.gif">
+    <title>Noodle - Python/Flask Lab Notebook</title>
+    <script type="text/javascript">
+        window.onload = function(){
+            var form = document.getElementById("form1");
+            form.onsubmit = function(){
+                var newfilename = document.getElementById("newfilename");
+                window.location = "/" + newfilename.value;
+                return false;
+            };          
+        };
+    </script>  
+  </head>
+  <body>    
+{% block content %}  
+
+  <ul>
+      <h2>Create a New Page</h2>
+    <form action="" id="form1" method="post">
+    New Filename: <input type="text" id="newfilename" name="newfilename" /><input type="submit" value="New Page" id="zsubmit">
+    </form>
+
+    <h2><a href=/_thisweek>This Week's Lab Notebook</a>
+
+    <h2>Existing Pages</h2>
+    {% for page in pages %}
+        <li>
+            <a href="{{ url_for("page", path=page.path) }}">{{ page.path }}</a> [ <a href="/_del{{ url_for("page", path=page.path) }}"  onclick="return confirm('Are you sure?')">X</a> ]
+        </li>
+    {% else %}
+        Nothing
+    {% endfor %}
+    </ul>
+{% endblock content %}    
+  </body>
+</html>
