@@ -64,7 +64,8 @@ def page(path):
 
     newpath = path.replace(" ", "_");
 
-    print newpath
+    #print path
+    #print newpath
 
     if newpath != path:
         return redirect(newpath)
@@ -79,9 +80,9 @@ def page(path):
         weekstring = thisweekdatetime.strftime("%B %d, %Y")
         currdatestring = now.strftime("%A, %b %d, %Y")
         currtimestring = now.strftime("%I:%M%p")
-        return render_template('newjournal.html', week=weekstring, date=currdatestring, time=currtimestring)
+        return render_template('newjournal.html', week=weekstring, date=currdatestring, time=currtimestring, title=path)
 
-    return render_template('existingjournal.html', page=page)
+    return render_template('existingjournal.html', page=page, title=path)
 
 
 # Route that will process the AJAX request (_save)

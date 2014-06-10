@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+<title>Noodle - {% block title %}{{ title }}{% endblock %}</title>
 <meta charset="UTF-8">
 <script src="/static/jquery/jquery.min.js"></script>
 <link href="/static/jquery/bootstrap.min.css" rel="stylesheet">
@@ -70,10 +71,10 @@ CKEDITOR.timestamp='ABCD';
 </script>
 </head>
 <body>
-[ <a href="/" onclick="if (saved) { return true; } else { return confirm('Are you sure? Unsaved changes...') }">Home</a> ]<div id="message" style="position:absolute;top:0%;right:5%"></div>
+[ <a href="/" onclick="if (saved) { return true; } else { return confirm('Are you sure? Unsaved changes...') }">Home</a> ]<div id="message" style="position:absolute;top:0%;right:1%"></div>
 <div id="top"><!-- top toolbar --></div>
-<div style="height: calc(100% - 168px); overflow: auto; border: 0px solid #afafaf; padding: 20px; margin: 20px;">
-    <div contenteditable="true" id="inline1" style="height=100%; width: 100%; float: left; border: 5px; outline: none;">
+<div style="height: calc(100% - 128px); overflow: auto; border: 0px solid #afafaf; padding: 0px 20px; margin: 0px 20px;">
+    <div contenteditable="true" id="inline1" style="height=100%; width: 100%; float: left; border: 0px; outline: none;">
 {% block content %}
 {% endblock content %}
 	</div>
