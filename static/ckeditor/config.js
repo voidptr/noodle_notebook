@@ -8,6 +8,10 @@ CKEDITOR.editorConfig = function( config ) {
     //config.skin = 'kama';
     //config.skin = 'monoo';
 
+    config.filebrowserImageUploadUrl = '/_upload';
+    config.toolbarLocation = 'top';
+    config.extraPlugins = 'allowsave,button-h1,button-h2,button-h3,button-h4,button-h5,button-h6';
+
     // This is actually the default value.
     config.keystrokes =
     [
@@ -20,6 +24,13 @@ CKEDITOR.editorConfig = function( config ) {
         [ CKEDITOR.CTRL + 89 /*Y*/, 'redo' ],
         [ CKEDITOR.CTRL + CKEDITOR.SHIFT + 90 /*Z*/, 'redo' ],
 
+        [ CKEDITOR.CTRL + 49 /*1*/, 'button-h1'],
+        [ CKEDITOR.CTRL + 50 /*2*/, 'button-h2'],
+        [ CKEDITOR.CTRL + 51 /*3*/, 'button-h3'],
+        [ CKEDITOR.CTRL + 52 /*4*/, 'button-h4'],
+        [ CKEDITOR.CTRL + 53 /*5*/, 'button-h5'],
+        [ CKEDITOR.CTRL + 54 /*6*/, 'button-h6'],
+
         [ CKEDITOR.CTRL + 76 /*L*/, 'link' ],
 
         [ CKEDITOR.CTRL + 66 /*B*/, 'bold' ],
@@ -30,25 +41,12 @@ CKEDITOR.editorConfig = function( config ) {
         [ CKEDITOR.ALT + 109 /*-*/, 'toolbarCollapse' ]
     ];
 
-//   config.filebrowserBrowseUrl = '/_browse_files/';
-//   config.filebrowserImageBrowseUrl = '/_browse_images/';
-//   config.filebrowserUploadUrl = '/_upload_files/';
-   config.filebrowserImageUploadUrl = '/_upload';
-
-    config.toolbarLocation = 'top';
-
-//    config.extraPlugins = 'allowsave,imagebrowser';
-    config.extraPlugins = 'allowsave';
-
     config.toolbar_Full = [
     { 
         name: 'document',    
         groups: [ 'mode', 'document', 'doctools' ], 
         items: [ 'Source', 'Save', 'NewPage', 'DocProps', 'Preview', 'Print', 'Templates', 'document' ] 
     },
-    // On the basic preset, clipboard and undo is handled by keyboard.
-    // Uncomment the following line to enable them on the toolbar as well.
-    // { name: 'clipboard',   groups: [ 'clipboard', 'undo' ], items: [ 'Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', 'Undo', 'Redo' ] },
     { 
         name: 'editing',     
         groups: [ 'find', 'selection', 'spellchecker' ], 
@@ -62,10 +60,6 @@ CKEDITOR.editorConfig = function( config ) {
         //'Iframe', 
         'InsertPre' ]
     },
-/*    { 
-        name: 'forms', 
-        items: [ 'Form', 'Checkbox', 'Radio', 'TextField', 'Textarea', 'Select', 'Button', 'ImageButton', 'HiddenField' ] 
-    }, */
 //    '/',
     { 
         name: 'basicstyles', 
@@ -76,9 +70,7 @@ CKEDITOR.editorConfig = function( config ) {
         name: 'paragraph',   
         groups: [ 'list', 'indent', 'blocks', 'align' ], 
         items: [ 'NumberedList', 'BulletedList', 'Outdent', 'Indent', 'Blockquote', 
-//                'CreateDiv', 
-                'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock', 
-//                'BidiLtr', 'BidiRtl' 
+                'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock' 
                 ] 
     },
     { 
@@ -88,8 +80,7 @@ CKEDITOR.editorConfig = function( config ) {
     '/',
     { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
     { name: 'colors', items: [ 'TextColor', 'BGColor' ] },
-    { name: 'tools', items: [ 'UIColor', 'Maximize', 'ShowBlocks' ] } //,
-    //{ name: 'about', items: [ 'About' ] }
+    { name: 'tools', items: [ 'UIColor', 'Maximize', 'ShowBlocks' ] } 
   ];
 
   config.toolbar = "Full";
