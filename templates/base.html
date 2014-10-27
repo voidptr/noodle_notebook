@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Noodle - {% block title %}{{ title }}{% endblock %}</title>
+<title>{% block title %}{{ title }}{% endblock %}</title>
 <meta charset="UTF-8">
 <script src="/static/jquery/jquery.min.js"></script>
 <link href="/static/jquery/bootstrap.min.css" rel="stylesheet">
@@ -32,8 +32,65 @@ CKEDITOR.timestamp='ABCD';
         document.body.appendChild(el);
     }
 
-    var saved = false;
+    var initial = true;
     var lastsaved;
+    var cke;
+
+    function save(dta)
+    {
+        /* deprecated jquery
+        $.getJSON('/_save', {
+                data: dta,
+            }, function(data) {
+               saved = true;
+               lastsaved = dta
+            });
+        */
+
+        initial = false;
+
+        var jqxhr = $.getJSON( '/_save', { data: dta }, function(data) {
+            lastsaved = dta;
+
+            //console.log( "success" );
+        })
+            .done(function() {
+                setTimeout(function(){setMessageDiv("Success!")},500);
+                //console.log( "second success" );
+            })
+            .fail(function() {
+                setTimeout(function(){setMessageDiv("Failed! :(")},500);
+                console.log( "error" );
+            })
+            .always(function() {
+                setTimeout(function(){setMessageDiv("")},2000);
+                console.log( "complete" );
+            });
+        // Perform other work here ...
+        // Set another completion function for the request above
+        jqxhr.complete(function() {
+            //console.log( "second complete" );
+        });            
+        
+    }
+
+    function autoSave()
+    {
+        var dta = cke.getData();
+
+        if (initial)
+        {
+            lastsaved = dta; 
+            initial = false;
+        }
+
+        if (dta != lastsaved)
+        {
+            setMessageDiv("AutoSaving...");
+            save(dta);
+        }
+    }
+
 
     CKEDITOR.plugins.registered['allowsave'] = {
       init: function (editor) {
@@ -41,29 +98,24 @@ CKEDITOR.timestamp='ABCD';
          {
               modes: { wysiwyg: 1, source: 1 },
               exec: function (editor) { // Add here custom function for the save button
-                
+
                 var dta = editor.getData();
 
                 setMessageDiv("Saving...");
 
-                $.getJSON('/_save', {
-                  data: dta,
-                }, function(data) {
-                    saved = true
-                    lastsaved = dta
-
-                    setTimeout(function(){setMessageDiv("Success!")},500);
-                    setTimeout(function(){setMessageDiv("")},2000);
-                });
+                save(dta);
               }
          });
-         editor.ui.addButton && editor.ui.addButton('Save', { 
-                label: 'Save', 
+         editor.ui.addButton && editor.ui.addButton('Save', {
+                label: 'Save',
                 command: 'save',
                 toolbar: 'document,10' });
          editor.on('blur', function() {
-            //checkSaved();
          });
+         cke = editor; // paradigm breaking, but I can't find better documentation :/
+         lastsaved = editor.getData(); // initialize with the data we have. no need to save
+         setInterval(autoSave, 10000); // autosave every 10 seconds
+
       }
     }
 
@@ -71,7 +123,7 @@ CKEDITOR.timestamp='ABCD';
 </script>
 </head>
 <body>
-[ <a href="/" onclick="if (saved) { return true; } else { return confirm('Are you sure? Unsaved changes...') }">Home</a> ]<div id="message" style="position:absolute;top:0%;right:1%"></div>
+[ <a href="/" onclick="if (saved) { return true; } else { return confirm('Are you sure? Unsaved changes...') }">Home</a> ] <div style="position:absolute;top:0%;right:50%">{% block title2 %}{{ title }}{% endblock %}</div><div id="message" style="position:absolute;top:0%;right:1%"></div>
 <div id="top"><!-- top toolbar --></div>
 <div style="height: calc(100% - 128px); overflow: auto; border: 0px solid #afafaf; padding: 0px 20px; margin: 0px 20px;">
     <div contenteditable="true" id="inline1" style="height=100%; width: 100%; float: left; border: 0px; outline: none;">

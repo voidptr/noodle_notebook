@@ -14,7 +14,7 @@ FLATPAGES_EXTENSION = '.html'
 
 # right now, since we have shitty path handling, include the
 # ending slash.
-FLATPAGES_ROOT = "../LabNotebooksRepository/" 
+FLATPAGES_ROOT = "../LabNotebooksRepository/"
 
 app = Flask(__name__)
 app.config.from_object(__name__)
@@ -30,7 +30,7 @@ def prerender_jinja(text):
 # and list what's available to look at.
 @app.route('/')
 def index():
-    sortedpages = reversed(sorted(pages, key=lambda page: page.path))	    
+    sortedpages = reversed(sorted(pages, key=lambda page: page.path))
     return render_template('index.html', pages=sortedpages)
     # TODO, add a rename link
 
@@ -51,7 +51,7 @@ def thisweek():
     delta = datetime.timedelta(days=now.weekday())
     thisweekdatetime = now - delta
 
-    thisweekname = thisweekdatetime.strftime("%y.%j._ - Notes - Week of %B %d %Y") 
+    thisweekname = thisweekdatetime.strftime("%y.%j._ - Notes - Week of %B %d %Y")
 
     return redirect("/"+thisweekname)
 
@@ -90,7 +90,7 @@ def page(path):
 @app.route('/_save')
 def save():
     data = request.args.get('data', 0, type=str)
-    
+
     referrer = request.referrer
 
     completefile = render_template("existingjournal.html", page=data)
@@ -128,7 +128,7 @@ def browse_images():
     jsons = []
     for (dirpath, dirnames, filenames) in os.walk(FLATPAGES_ROOT):
         dirnames.sort(reverse=True)
-        
+
         if started == 0:
             started = 1
             continue
@@ -138,7 +138,7 @@ def browse_images():
         for filename in filenames:
             if filename[-5] == ".html" or filename == ".DS_Store":
                 continue
-            
+
             url = "./" + dirpath[len(FLATPAGES_ROOT):] + "/" + filename
             thumb = "/" + dirpath[len(FLATPAGES_ROOT):] + "/" + filename
             jsons.append( jsonify(image=url,thumb=thumb,folder=shortdirpath) )
@@ -148,7 +148,7 @@ def browse_images():
 
     return output
 
-# Route that will process a POST ajax request (_upload), pull out the 
+# Route that will process a POST ajax request (_upload), pull out the
 # uploaded file, save it to a directory based on the referrer
 # which is the name of our journal file,
 # then, responds with a call to the CKEDITOR callback, with the selected URL.
