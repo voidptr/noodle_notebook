@@ -1,3 +1,0 @@
-[submodule "html2markdown"]
-	path = html2markdown
-	url = git@github.com:voidptr/html2markdown.git

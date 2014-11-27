@@ -3,6 +3,7 @@ from urlparse import urlparse
 from flask import Flask, render_template, render_template_string, Markup, request, json, redirect, url_for, jsonify, make_response
 from flask_flatpages import FlatPages, pygmented_markdown
 import datetime
+import html2text
 
 ## TODO ##
 # add proper path handling with combinining paths and things.
@@ -19,6 +20,13 @@ FLATPAGES_ROOT = "../LabNotebooksRepository/"
 app = Flask(__name__)
 app.config.from_object(__name__)
 pages = FlatPages(app)
+
+h = html2text.HTML2Text()
+#h.ignore_links = True
+#h.ignore_images = True
+h.body_width = False
+
+
 
 # This is a thin wrapper that pretty much does zero rendering
 # on the input text, which we've decided is html.
@@ -96,9 +104,15 @@ def save():
     completefile = render_template("existingjournal.html", page=data)
 
     filename = urlparse(referrer).path.translate(None, '/') + ".html"
+    mdfilename = urlparse(referrer).path.translate(None, '/') + ".md"
+
 
     f = open( FLATPAGES_ROOT + filename, 'w')
     f.write(data)
+    f.close()
+
+    f = open( FLATPAGES_ROOT + mdfilename, 'w')
+    f.write( h.handle(data) )
     f.close()
 
     return jsonify(result=referrer)
