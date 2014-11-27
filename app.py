@@ -4,6 +4,7 @@ from flask import Flask, render_template, render_template_string, Markup, reques
 from flask_flatpages import FlatPages, pygmented_markdown
 import datetime
 import html2text
+import markdown2
 
 ## TODO ##
 # add proper path handling with combinining paths and things.
@@ -26,6 +27,7 @@ h = html2text.HTML2Text()
 #h.ignore_images = True
 h.body_width = False
 
+md = markdown2.Markdown()
 
 
 # This is a thin wrapper that pretty much does zero rendering
@@ -105,6 +107,7 @@ def save():
 
     filename = urlparse(referrer).path.translate(None, '/') + ".html"
     mdfilename = urlparse(referrer).path.translate(None, '/') + ".md"
+    htmlmdfilename = mdfilename + ".html"
 
 
     f = open( FLATPAGES_ROOT + filename, 'w')
@@ -114,6 +117,12 @@ def save():
     f = open( FLATPAGES_ROOT + mdfilename, 'w')
     f.write( h.handle(data) )
     f.close()
+
+    f = open( FLATPAGES_ROOT + htmlmdfilename, 'w')
+    f.write(  md.convert(h.handle(data)) )
+    f.close()
+
+
 
     return jsonify(result=referrer)
 
