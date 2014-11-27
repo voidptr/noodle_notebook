@@ -1,6 +1,3 @@
 [submodule "html2text"]
 	path = html2text
 	url = https://github.com/voidptr/html2text.git
-[submodule "python-markdown2"]
-	path = python-markdown2
-	url = https://github.com/trentm/python-markdown2.git
