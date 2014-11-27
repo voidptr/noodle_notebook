@@ -3,6 +3,12 @@
 A quick and dirty python flask based lab notebook, using ckeditor and
 jquery to save your lab notebooks locally.
 
+## installing Noodle
+
+    git clone https://github.com/voidptr/noodle_notebook.git
+    git submodule init
+    git submodule update
+
 ## Configuring Noodle (DO NOT SKIP)
 
 Configure by editing the headers of app.py. Specifically, you’ll want to
