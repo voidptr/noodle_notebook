@@ -27,7 +27,7 @@ h = html2text.HTML2Text()
 #h.ignore_images = True
 h.body_width = False
 
-md = markdown2.Markdown()
+#md = markdown2.Markdown()
 
 
 # This is a thin wrapper that pretty much does zero rendering
@@ -107,7 +107,7 @@ def save():
 
     filename = urlparse(referrer).path.translate(None, '/') + ".html"
     mdfilename = urlparse(referrer).path.translate(None, '/') + ".md"
-    htmlmdfilename = mdfilename + ".html"
+    #htmlmdfilename = mdfilename + ".html"
 
 
     f = open( FLATPAGES_ROOT + filename, 'w')
@@ -118,9 +118,9 @@ def save():
     f.write( h.handle(data) )
     f.close()
 
-    f = open( FLATPAGES_ROOT + htmlmdfilename, 'w')
-    f.write(  md.convert(h.handle(data)) )
-    f.close()
+    #f = open( FLATPAGES_ROOT + htmlmdfilename, 'w')
+    #f.write(  md.convert(h.handle(data)) )
+    #f.close()
 
 
 
