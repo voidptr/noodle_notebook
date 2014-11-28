@@ -106,7 +106,7 @@ def save():
     completefile = render_template("existingjournal.html", page=data)
 
     filename = urlparse(referrer).path.translate(None, '/') + ".html"
-    mdfilename = urlparse(referrer).path.translate(None, '/') + ".md"
+    #mdfilename = urlparse(referrer).path.translate(None, '/') + ".md"
     #htmlmdfilename = mdfilename + ".html"
 
 
@@ -114,9 +114,9 @@ def save():
     f.write(data)
     f.close()
 
-    f = open( FLATPAGES_ROOT + mdfilename, 'w')
-    f.write( h.handle(data) )
-    f.close()
+    #f = open( FLATPAGES_ROOT + mdfilename, 'w')
+    #f.write( h.handle(data) )
+    #f.close()
 
     #f = open( FLATPAGES_ROOT + htmlmdfilename, 'w')
     #f.write(  md.convert(h.handle(data)) )

@@ -1,5 +1,6 @@
 ﻿/**
  * @file SimpleUploads plugin for CKEditor
+ *	Version: 4.3.6
  *	Uploads pasted images and files inside the editor to the server for Firefox and Chrome
  *	Feature introduced in: https://bugzilla.mozilla.org/show_bug.cgi?id=490879
  *		doesn't include images inside HTML (paste from word). IE11 does.
@@ -8,7 +9,7 @@
 
  * Includes Drag&Drop file uploads for all the new browsers.
  * Two toolbar buttons to perform quick upload of files.
- * Copyright (C) 2012-13 Alfonso Martínez de Lizarrondo
+ * Copyright (C) 2012-14 Alfonso Martínez de Lizarrondo
  *
 improvements: allow d&d between 2 editors in Firefox
 https://bugzilla.mozilla.org/show_bug.cgi?id=454832
@@ -18,11 +19,56 @@ https://bugzilla.mozilla.org/show_bug.cgi?id=454832
 (function() {
 "use strict";
 
-var counter = 0;
-function getTimeStampId()
+/*
+	If the selected image is a bmp converts it to a png
+*/
+function convertToBmp(ev)
 {
-	counter++;
-	return (new Date()).toJSON().replace(/:|T|-/g, "_").replace(/\..*/, "") + counter;
+	var data = ev.data,
+		isBmp = /\.bmp$/.test(data.name),
+		editor = ev.editor;
+
+	if (!isBmp)
+		return;
+
+	var img = data.image;
+
+	var canvas = document.createElement("canvas");
+	canvas.width = img.width;
+	canvas.height = img.height;
+
+	var ctx = canvas.getContext('2d');
+	ctx.drawImage(img, 0, 0);
+
+	data.file = canvas.toDataURL("image/png");
+	data.name = data.name.replace(/\.bmp$/, ".png");
+}
+
+/*
+	Verifies if the selected image is within the allowed dimensions
+*/
+function checkDimension(ev)
+{
+	var data = ev.data,
+		editor = ev.editor,
+		config = editor.config,
+		maximum = config.simpleuploads_maximumDimensions;
+
+	var img = data.image;
+
+	if (maximum.width && img.width > maximum.width)
+	{
+		alert(editor.lang.simpleuploads.imageTooWide);
+		ev.cancel();
+		return;
+	}
+
+	if (maximum.height && img.height > maximum.height)
+	{
+		alert(editor.lang.simpleuploads.imageTooTall);
+		ev.cancel();
+		return;
+	}
 }
 
 // Custom rule similar to the fake Object to avoid generating anything if the user tries to do something strange while a file is being uploaded
@@ -65,9 +111,10 @@ var filePicker,
 
 var IEUpload_fileName,
 	IEUpload_caller,
-	IEUpload_callback;
+	IEUpload_callback,
+	IEUpload_forImage;
 
-function PickAndUploadFile(editor, forImage, caller, callback) {
+function PickAndSendFile(editor, forImage, caller, callback) {
 	if (IEUpload_fileName)
 	{
 		alert("Please, wait to finish the current upload");
@@ -89,6 +136,7 @@ function PickAndUploadFile(editor, forImage, caller, callback) {
 		}
 		IEUpload_caller = caller;
 		IEUpload_callback = callback;
+		IEUpload_forImage = forImage;
 
 		var fnNumber = editor._.simpleuploadsFormUploadFn;
 		var fnInitPicker = editor._.simpleuploadsFormInitFn;
@@ -103,8 +151,11 @@ function PickAndUploadFile(editor, forImage, caller, callback) {
 							name: this.value,
 							url: this.form.action,
 							context : IEUpload_caller,
-							id: 'IEUpload'
+							id: 'IEUpload',
+							requiresImage: IEUpload_forImage
 						};
+							// , mode : {type : 'selectedFileIE'}
+
 						// Remove C:\FakePath\
 						var m = evdata.name.match(/\\([^\\]*)$/);
 						if (m)
@@ -115,6 +166,12 @@ function PickAndUploadFile(editor, forImage, caller, callback) {
 						// if not canceled it's the evdata object
 						if ( typeof result == "boolean" )
 							return;
+
+						if (evdata.requiresImage && !CKEDITOR.plugins.simpleuploads.isImageExtension(filePickerEditor, evdata.name))
+						{
+							alert(filePickerEditor.lang.simpleuploads.nonImageExtension);
+							return;
+						}
 
 						if (IEUpload_callback && IEUpload_callback.start)
 							IEUpload_callback.start( evdata );
@@ -178,7 +235,8 @@ function PickAndUploadFile(editor, forImage, caller, callback) {
 
 	var data = {
 		context : caller,
-		callback : callback
+		callback : callback,
+		requiresImage : forImage
 	};
 
 	if (!filePicker)
@@ -190,6 +248,10 @@ function PickAndUploadFile(editor, forImage, caller, callback) {
 		filePicker.style.height="1px";
 		filePicker.style.opacity=0.1;
 		filePicker.multiple = "multiple";
+
+		// to trick jQueryUI
+		filePicker.position = "absolute";
+		filePicker.zIndex = 1000;
 
 		document.body.appendChild(filePicker);
 		filePicker.addEventListener("change", function ()
@@ -208,102 +270,42 @@ function PickAndUploadFile(editor, forImage, caller, callback) {
 
 				evData.file = file;
 				evData.name = file.name;
-				evData.id = getTimeStampId();
-
-				if (!evData.callback)
-					createPreview(evData, filePickerEditor, filePickerForceLink);
-
-				// Upload the file
-				if (uploadFile( filePickerEditor, filePickerForceLink, evData ))
-				{
-					var element = evData.element;
-					if (!element)
-						continue;
-
-					if (count == 1)
-					{
-						var selection = filePickerEditor.getSelection(),
-							selected = selection.getSelectedElement(),
-							originalNode;
-
-						// If it's just one image and the user has another one selected, replace it
-						if (selected && selected.getName() == "img" && element.getName() == "span")
-						{
-							originalNode = selected.$;
-						}
-
-						// a link
-						if (element.getName() == "a")
-						{
-							var parent = selected;
-							var ranges = selection.getRanges(),
-								range = ranges && ranges[0];
-
-							if (!parent)
-							{
-								if (ranges && ranges.length == 1)
-								{
-									parent = range.startContainer.$;
-									if (parent.nodeType == document.TEXT_NODE)
-										parent = parent.parentNode;
-								}
-							}
-
-							while ( parent && (parent.nodeType == document.ELEMENT_NODE) && (parent.nodeName.toLowerCase() != "a") )
-								parent = parent.parentNode;
-
-							if ( parent && parent.nodeName && parent.nodeName.toLowerCase() == "a" )
-							{
-								originalNode = parent;
-							}
-							// there was no link, check the best way to create one:
-
-							// create a link
-							if (!originalNode && range && (selected || !range.collapsed) )
-							{
-								var style = new CKEDITOR.style({ element: 'a', attributes: {href:'#'} } );
-								style.type = CKEDITOR.STYLE_INLINE; // need to override... dunno why.
-								style.applyToRange( range );
-
-								parent = range.startContainer.$;
-								if (parent.nodeType == document.TEXT_NODE)
-									parent = parent.parentNode;
-
-								originalNode = parent;
-							}
-						}
-
-						if (originalNode)
-						{
-							originalNode.parentNode.replaceChild(element.$, originalNode);
-							evData.originalNode = originalNode;
-							filePickerEditor.fire( "saveSnapshot" );
-							return;
-						}
-					}
-
-					// insert a space between links
-					if (i>0 && element.getName()=="a")
-						filePickerEditor.insertHtml("&nbsp;");
-
-					filePickerEditor.insertElement(element);
-				}
+				evData.id = CKEDITOR.plugins.simpleuploads.getTimeStampId();
+				evData.forceLink = filePickerForceLink;
+				evData.mode = {
+					type : 'selectedFile',
+					i : i,
+					count : count
+				};
+				CKEDITOR.plugins.simpleuploads.insertSelectedFile(filePickerEditor, evData);
 			}
 		});
 	}
 
 	filePicker.value='';
 	filePicker.simpleUploadData = data;
+
+	// Keep focus on the editor instance.
+	if (CKEDITOR.env.webkit)
+	{
+		var manager = editor.focusManager;
+		if (manager && manager.lock)
+		{
+			manager.lock();
+			setTimeout( function() { manager.unlock(); }, 500 );
+		}
+	}
 	filePicker.click();
 }
 
 	function getUploadUrl(editor, functionNumber, forImage) {
+		var url = forImage ? editor.config.filebrowserImageUploadUrl : editor.config.filebrowserUploadUrl;
+		if (url=="base64") return url;
+
 		var params = {};
 		params.CKEditor = editor.name;
 		params.CKEditorFuncNum = functionNumber;
 		params.langCode = editor.langCode;
-
-		var url = forImage ? editor.config.filebrowserImageUploadUrl : editor.config.filebrowserUploadUrl;
 		return addQueryString( url, params );
 	}
 
@@ -386,20 +388,6 @@ function PickAndUploadFile(editor, forImage, caller, callback) {
 		return url + ( ( url.indexOf( "?" ) != -1 ) ? "&" : "?" ) + queryString.join( "&" );
 	}
 
-
-var addFileCmd = {
-	exec: function( editor ) {
-		PickAndUploadFile(editor, false, this);
-	}
-};
-
-var addImageCmd = {
-	exec: function( editor ) {
-		PickAndUploadFile(editor, true, this);
-	}
-};
-
-
 function hasFiles(e)
 {
 	var ev = e.data.$,
@@ -413,14 +401,73 @@ function hasFiles(e)
 	return false;
 }
 
+function receivedUrl(fileUrl, data, editor, el, attribute)
+{
+	if (el.$.nodeName.toLowerCase() == "span")
+	{
+		// create the final img, getting rid of the fake div
+		var img;
+		if (data.originalNode)
+		{
+			img = data.originalNode.cloneNode( true );
+			// reset size
+			img.removeAttribute("width");
+			img.removeAttribute("height");
+			img.style.width = "";
+			img.style.height = "";
+			img = new CKEDITOR.dom.element( img );
+		}
+		else
+		{
+			img = new CKEDITOR.dom.element( "img", editor.document );
+		}
+
+		img.data( 'cke-saved-src', fileUrl);
+		img.setAttribute( 'src', fileUrl);
+
+		// wait to replace until the image is loaded to prevent flickering
+		img.on("load", function(e) {
+			e.removeListener();
+			img.removeListener( "error", errorListener);
+
+			checkLoadedImage(img, editor, el, data.name);
+		});
+
+		img.on("error", errorListener, null, el);
+
+		// in case the user tries to get the html right now, a little protection
+		el.data('cke-real-element-type', "img");
+		el.data('cke-realelement', encodeURIComponent( img.getOuterHtml() ));
+		el.data('cke-real-node-type', CKEDITOR.NODE_ELEMENT);
+
+		return;
+	}
+	if (data.originalNode)
+	{
+		var newEl = data.originalNode.cloneNode( true );
+		el.$.parentNode.replaceChild(newEl, el.$);
+		el = new CKEDITOR.dom.element( newEl );
+	}
+	else
+	{
+		el.removeAttribute( "id" );
+		el.removeAttribute( "class" );
+		el.removeAttribute( 'contentEditable' );
+		el.setHtml( el.getFirst().getHtml() );
+	}
+
+	el.data( 'cke-saved-' + attribute, fileUrl);
+	el.setAttribute( attribute, fileUrl);
+	editor.fire('simpleuploads.finishedUpload', { name: data.name, element: el } );
+}
+
 CKEDITOR.plugins.add( "simpleuploads",
 {
 	//lang : 'en,es',		v4 style for builder not compatible with v3
-	lang : ['en','de','es','pl'], // "en" the first one to use it as default
+	lang : ['en','ar','cs','de','es','fr','he','hu','it','ja','ko','nl','pl','pt-br','ru','tr','zh-cn'], // "en" the first one to use it as default
 	icons: 'addfile,addimage', // %REMOVE_LINE_CORE%
 
-	onLoad : function()
-	{
+	onLoad : function()	{
 		// v4
 		// In v4 this setting is global for all instances:
 		if (CKEDITOR.addCss)
@@ -457,20 +504,21 @@ CKEDITOR.plugins.add( "simpleuploads",
 			node.$.innerHTML = content;
 	},
 
-	init : function( editor )
-	{
-		var imageExtensions = editor.config.simpleuploads_imageExtensions || "jpe?g|gif|png";
-		editor.config.simpleuploads_imageRegexp = new RegExp( "\.(?:" + imageExtensions + ")$", "i");
+	init : function( editor ) {
+		var config = editor.config;
+
+		if (typeof config.simpleuploads_imageExtensions == "undefined")
+			config.simpleuploads_imageExtensions = "jpe?g|gif|png";
 
 		// v3
 		if (editor.addCss)
-			editor.addCss( getEditorCss(editor.config) );
+			editor.addCss( getEditorCss(config) );
 
 		// if not defined specifically for images, reuse the default file upload url
-		if (!editor.config.filebrowserImageUploadUrl)
-			editor.config.filebrowserImageUploadUrl = editor.config.filebrowserUploadUrl;
+		if (!config.filebrowserImageUploadUrl)
+			config.filebrowserImageUploadUrl = config.filebrowserUploadUrl;
 
-		if (!editor.config.filebrowserUploadUrl && !editor.config.filebrowserImageUploadUrl)
+		if (!config.filebrowserUploadUrl && !config.filebrowserImageUploadUrl)
 		{
 			if (window.console && console.log)
 			{
@@ -481,6 +529,10 @@ CKEDITOR.plugins.add( "simpleuploads",
 			}
 			return;
 		}
+
+		// if upload URL is set to base64 data urls then exit if the browser doesn't support the file reader api
+		if (config.filebrowserImageUploadUrl=="base64" && (typeof FormData == 'undefined'))
+			return;
 
 		// v 4.1 filters
 		if (editor.addFeature)
@@ -584,37 +636,104 @@ CKEDITOR.plugins.add( "simpleuploads",
 			this.throbber.show();
 		};
 
+
 		// Add a listener to check file size and valid extensions
 		editor.on( "simpleuploads.startUpload" , function(ev)
 		{
-			var file = ev.data && ev.data.file;
-			if (editor.config.simpleuploads_maxFileSize &&
+			var editor = ev.editor,
+				config = editor.config,
+				file = ev.data && ev.data.file;
+			if (config.simpleuploads_maxFileSize &&
 				file && file.size &&
-				file.size > editor.config.simpleuploads_maxFileSize )
+				file.size > config.simpleuploads_maxFileSize )
 			{
 				alert( editor.lang.simpleuploads.fileTooBig );
 				ev.cancel();
 			}
 			var name = ev.data.name;
-			if (editor.config.simpleuploads_invalidExtensions)
+			if (config.simpleuploads_invalidExtensions)
 			{
-				var reInvalid = new RegExp( "\.(?:" + editor.config.simpleuploads_invalidExtensions + ")$", "i");
+				var reInvalid = new RegExp( "\.(?:" + config.simpleuploads_invalidExtensions + ")$", "i");
 				if ( reInvalid.test( name ) )
 				{
 					alert( editor.lang.simpleuploads.invalidExtension );
 					ev.cancel();
 				}
 			}
-			if (editor.config.simpleuploads_acceptedExtensions)
+			if (config.simpleuploads_acceptedExtensions)
 			{
-				var reAccepted = new RegExp( "\.(?:" + editor.config.simpleuploads_acceptedExtensions + ")$", "i");
+				var reAccepted = new RegExp( "\.(?:" + config.simpleuploads_acceptedExtensions + ")$", "i");
 				if ( !reAccepted.test( name ) )
 				{
-					alert( editor.lang.simpleuploads.nonAcceptedExtension.replace("%0", editor.config.simpleuploads_acceptedExtensions) );
+					alert( editor.lang.simpleuploads.nonAcceptedExtension.replace("%0", config.simpleuploads_acceptedExtensions) );
 					ev.cancel();
 				}
 			}
 		});
+
+		// Special listener that captures uploads of images and if there's some listener set for "simpleuploads.localImageReady"
+		// event, prepare an image with the local data (to check dimensions, convert between formats, resize...)
+		editor.on( 'simpleuploads.startUpload' , function(ev) {
+			var data = ev.data,
+				editor = ev.editor;
+
+			// If this function has already pre-processed the file, exit.
+			if (data.image)
+				return;
+
+			// Handle here only images
+			if (data.forceLink || !CKEDITOR.plugins.simpleuploads.isImageExtension(editor, data.name))
+				return;
+
+			// If the mode hasn't been set (picked files in IE8), don't process the data
+			if (!data.mode || !data.mode.type)
+				return;
+
+			// As this forces an asynchronous callback use it only when there's a listener set.
+			if (!editor.hasListeners( 'simpleuploads.localImageReady' ))
+				return;
+
+			// Cancel the default processing
+			ev.cancel();
+
+			if (data.mode.type=="base64paste")
+			{
+				// to handle multiple images in IE11, insert a marker for each one.
+				// we add our class so it won't remain if it's rejected in another step
+				var idTmp = CKEDITOR.plugins.simpleuploads.getTimeStampId();
+				data.result = "<span id='" + idTmp + "' class='SimpleUploadsTmpWrapper' style='display:none'>&nbsp;</span>";
+				data.mode.id = idTmp;
+			}
+
+			var img = new Image;
+			img.onload = function() {
+				var evData = CKEDITOR.tools.extend({}, data);
+				evData.image = img;
+
+				var result = editor.fire('simpleuploads.localImageReady', evData);
+
+				// in v3 cancel() returns true and in v4 returns false
+				// if not canceled it's the evdata object
+				if ( typeof result == "boolean" )
+					return;
+
+				CKEDITOR.plugins.simpleuploads.insertProcessedFile(ev.editor, evData);
+			};
+
+			if (typeof data.file == "string")
+				img.src = data.file;		// base64 encoded
+			else
+				img.src = URL.createObjectURL( data.file ); // FileReader
+		});
+
+
+		// Setup listeners if the config specifies that they should be used
+		if (config.simpleuploads_convertBmp)
+			editor.on( 'simpleuploads.localImageReady', convertToBmp);
+
+		if (config.simpleuploads_maximumDimensions)
+			editor.on( 'simpleuploads.localImageReady', checkDimension);
+
 
 		// workaround for image2 support
 		 editor.on( 'simpleuploads.finishedUpload' , function(ev) {
@@ -630,7 +749,12 @@ CKEDITOR.plugins.add( "simpleuploads",
 						widget.data.height = element.$.height;
 					}
 					else
+					{
+						// They have renamed the widget after the initial release :-(
+						// Let's try with both, one of them will work
 						editor.widgets.initOn(element, "image2");
+						editor.widgets.initOn(element, "image");
+					}
 				}
 			}
 		});
@@ -651,82 +775,62 @@ CKEDITOR.plugins.add( "simpleuploads",
 				html = html.replace( /<img src="webkit-fake-url:.*?">/g, "");
 			}
 
-			// Handles image pasting in Firefox
-			// Replace data: images in Firefox and upload them.
-			// No longer required with Firefox 22
-			html = html.replace( /<img(.*?) src="data:image\/.{3,4};base64,.*?"(.*?)>/g, function( img )
-				{
-					if (!editor.config.filebrowserImageUploadUrl)
-						return "";
-
-					var match = img.match(/"(data:image\/(.{3,4});base64,.*?)"/),
-						imgData = match[1],
-						type = match[2].toLowerCase(),
-						id = getTimeStampId();
-
-					// If it's too small then leave it as is.
-					if (imgData.length<128)
-						return img;
-
-					if (type=="jpeg")
-						type="jpg";
-
-					var fileName = id + '.' + type,
-						uploadData = {
-							context : "pastedimage",
-							name : fileName,
-							id : id
-						};
-
-					var xhr = createXHRupload(editor, false, uploadData);
-					if (!xhr)
-						return "";
-
-					// Create the multipart data upload.
-					var bin = window.atob( imgData.split(',')[1] ),
-						BOUNDARY = "---------------------------1966284435497298061834782736",
-						rn = "\r\n",
-						req = "--" + BOUNDARY;
-
-					req += rn + "Content-Disposition: form-data; name=\"upload\"";
-					// add timestamp?
-					req += "; filename=\"" + uploadData.name + "\"" + rn + "Content-type: image/" + type;
-					req += rn + rn + bin + rn + "--" + BOUNDARY + "--";
-
-					xhr.setRequestHeader("Content-Type", "multipart/form-data; boundary=" + BOUNDARY);
-					if (xhr.sendAsBinary)
-						xhr.sendAsBinary(req);
-					else
+			// Skip this if the upload is set to the magic string base64 to indicate that the data must be embedded into the document
+			if (config.filebrowserImageUploadUrl != "base64")
+			{
+				// Handles image pasting in Firefox
+				// Replace data: images in Firefox and upload them.
+				// No longer required with Firefox 22
+				html = html.replace( /<img(.*?) src="data:image\/.{3,4};base64,.*?"(.*?)>/g, function( img )
 					{
-						// emulate sendAsBinary for IE11
-						try {
-							var bufferData = new ArrayBuffer(req.length);
-							var ui8a = new Uint8Array(bufferData, 0);
-							for (var i = 0; i < req.length; i++)
-								ui8a[i] = (req.charCodeAt(i) & 0xff);
-							xhr.send(ui8a);
-						} catch (e) {}
-					}
+						if (!editor.config.filebrowserImageUploadUrl)
+							return "";
 
-					var animation = createSVGAnimation( imgData, id, editor ),
-						content = animation.$.innerHTML;
-					animation.$.innerHTML = "&nbsp;";
+						var match = img.match(/"(data:image\/(.{3,4});base64,.*?)"/),
+							imgData = match[1],
+							type = match[2].toLowerCase(),
+							id = CKEDITOR.plugins.simpleuploads.getTimeStampId();
 
-					editor.on( "afterPaste" , function( ev ) {
+						// If it's too small then leave it as is.
+						if (imgData.length<128)
+							return img;
+
+						if (type=="jpeg")
+							type="jpg";
+
+						var fileName = id + '.' + type,
+							uploadData = {
+								context : "pastedimage",
+								name : fileName,
+								id : id,
+								forceLink : false,
+								file : imgData,
+								mode : { type: "base64paste"}
+							};
+
+						if (!uploadFile(editor, uploadData))
+							return uploadData.result;
+
+						var animation = uploadData.element,
+							content = animation.$.innerHTML;
+						animation.$.innerHTML = "&nbsp;";
+
 						// only once
-						ev.removeListener();
+						editor.on( "afterPaste" , function( ev ) {
+							ev.removeListener();
 
-						var span = editor.document.$.getElementById(id);
-						if (!span)
-							return;
+							var span = editor.document.$.getElementById(id);
+							if (!span)
+								return;
 
-						// fight against ACF in v4.1 and IE11, insert svg afterwards
-						span.innerHTML = content;
-						setupCancelButton( editor, uploadData );
-					} );
+							// fight against ACF in v4.1 and IE11, insert svg afterwards
+							span.innerHTML = content;
+							setupCancelButton( editor, uploadData );
+						} );
 
-					return animation.getOuterHtml();
-				});
+						return animation.getOuterHtml();
+					});
+			}
 
 			if (e.data.html)
 				e.data.html = html;
@@ -766,7 +870,11 @@ CKEDITOR.plugins.add( "simpleuploads",
 
 		// Buttons to launch the file picker easily
 		// Files
-		editor.addCommand( 'addFile', addFileCmd);
+		editor.addCommand( 'addFile', {
+			exec: function( editor ) {
+				PickAndSendFile(editor, false, this);
+			}
+		});
 
 		editor.ui.addButton( 'addFile', {
 			label: editor.lang.simpleuploads.addFile,
@@ -774,19 +882,23 @@ CKEDITOR.plugins.add( "simpleuploads",
 			icon : this.path + 'icons/addfile.png', // %REMOVE_LINE_CORE%
 			toolbar: 'insert',
 			allowedContent : 'a[!href];span[id](SimpleUploadsTmpWrapper);',
-			requiredContent : 'a[!href]'
+			requiredContent : 'a[href]'
 		});
 
 		// Images
-		editor.addCommand( 'addImage', addImageCmd);
+		editor.addCommand( 'addImage', {
+			exec: function( editor ) {
+				PickAndSendFile(editor, true, this);
+			}
+		});
 
-		editor.ui.addButton && editor.ui.addButton( 'addImage', {
+		editor.ui.addButton( 'addImage', {
 			label: editor.lang.simpleuploads.addImage,
 			command: 'addImage',
 			icon : this.path + 'icons/addimage.png', // %REMOVE_LINE_CORE%
 			toolbar: 'insert',
 			allowedContent : 'img[!src,width,height];span[id](SimpleUploadsTmpWrapper);',
-			requiredContent : 'img[!src]'
+			requiredContent : 'img[src]'
 		});
 
 
@@ -794,7 +906,9 @@ CKEDITOR.plugins.add( "simpleuploads",
 			return;
 
 		var root,
-			visibleRoot;
+			visibleRoot,
+			pasteRoot;
+
 		var minX=-1, minY, maxX, maxY;
 		// Hint in the main document
 		var mainMinX=-1, mainMinY, mainMaxX, mainMaxY;
@@ -812,9 +926,31 @@ CKEDITOR.plugins.add( "simpleuploads",
 			}
 		};
 
+		editor.on( 'destroy', function() {
+			CKEDITOR.removeListener( 'simpleuploads.droppedFile', removeBaseHighlight);
+			CKEDITOR.document.removeListener( 'dragenter', CKEDITORdragenter);
+			CKEDITOR.document.removeListener( 'dragleave', CKEDITORdragleave);
+			domUnload();
+		});
+
+		var domUnload = function() {
+			if (!root || !root.removeListener)
+				return;
+
+			pasteRoot.removeListener( 'paste', pasteListener);
+			root.removeListener( 'dragenter', rootDragEnter);
+			root.removeListener( 'dragleave', rootDragLeave);
+			root.removeListener( 'dragover', rootDragOver);
+			root.removeListener( 'drop', rootDropListener);
+
+			pasteRoot = null;
+			root = null;
+			visibleRoot = null;
+		};
+
 		CKEDITOR.on( 'simpleuploads.droppedFile', removeBaseHighlight);
 
-		CKEDITOR.document.on( 'dragenter', function(e) {
+		var CKEDITORdragenter = function(e) {
 			if (mainMinX == -1)
 			{
 				if (!hasFiles(e))
@@ -840,8 +976,8 @@ CKEDITOR.plugins.add( "simpleuploads",
 				mainMaxX=CKEDITOR.document.$.body.parentNode.clientWidth;
 				mainMaxY=CKEDITOR.document.$.body.parentNode.clientHeight;
 			}
-		});
-		CKEDITOR.document.on( 'dragleave', function(e) {
+		};
+		var CKEDITORdragleave = function(e) {
 			if ( mainMinX == -1 )
 				return;
 
@@ -851,7 +987,10 @@ CKEDITOR.plugins.add( "simpleuploads",
 				removeBaseHighlight();
 				mainMinX = -1;
 			}
-		});
+		};
+
+		CKEDITOR.document.on( 'dragenter', CKEDITORdragenter);
+		CKEDITOR.document.on( 'dragleave', CKEDITORdragleave);
 
 		var rootDropListener = function(e) {
 			// editor
@@ -877,6 +1016,17 @@ CKEDITOR.plugins.add( "simpleuploads",
 				// Create Undo image
 				editor.fire( "saveSnapshot" );
 
+				// Prevent default insertion
+				e.data.preventDefault();
+
+				var dropLocation = {
+					ev : ev,
+					range : false,
+					count : data.files.length,
+					rangeParent : ev.rangeParent,
+					rangeOffset : ev.rangeOffset
+				};
+
 				for( var i=0; i<data.files.length; i++)
 				{
 					var file = data.files[ i ],
@@ -886,174 +1036,15 @@ CKEDITOR.plugins.add( "simpleuploads",
 							context : ev,
 							name : fileName,
 							file : file,
-							id : id
-						},
-						range;
-
-					// Prevent default insertion
-					e.data.preventDefault();
-
-					// If shift is pressed, create a link even if the drop is an image
-					var forceLink = ev.shiftKey;
-					createPreview(evData, editor, forceLink);
-
-					if (!uploadFile( editor, forceLink, evData ))
-						continue;
-
-					var element = evData.element;
-
-					// if we're adding several links, add a space between them
-					if ( range && element.getName()=="a" )
-					{
-						if ( range.pasteHTML )
-							range.pasteHTML( "&nbsp;" ); // simple space doesn't work
-						else
-							range.insertNode( editor.document.$.createTextNode( ' ' ) );
-					}
-
-					var target = ev.target;
-					if (!range)
-					{
-						var doc = editor.document.$;
-						// Move to insertion point
-						/*
-						standard way: only implemented in Firefox 20
-						if (document.caretPositionFromPoint)
-						{
-							var caret = document.caretPositionFromPoint(ev.pageX, ev.pageY),
-								textNode = caret.offsetNode,
-								offset = caret.offset;
-						}
-						*/
-
-						// Firefox, custom properties in event.
-						if ( ev.rangeParent )
-						{
-							var node = ev.rangeParent,
-								offset = ev.rangeOffset;
-							range = doc.createRange();
-							range.setStart( node, offset );
-							range.collapse( true );
-						}
-						else
-						{
-							// Webkit, old documentView API
-							if ( document.caretRangeFromPoint )
-							{
-								range = doc.caretRangeFromPoint( ev.clientX, ev.clientY );
+							forceLink : ev.shiftKey, // If shift is pressed, create a link even if the drop is an image
+							id : id,
+							mode : {
+								type : 'droppedFile',
+								dropLocation: dropLocation
 							}
-							else
-							{
-								// IE
-								if (target.nodeName.toLowerCase()=="img")
-								{
-									range = doc.createRange();
-									range.selectNode(target);
-								} else if ( document.body.createTextRange )
-								{
-									var textRange = doc.body.createTextRange();
-									try
-									{
-										textRange.moveToPoint( ev.clientX, ev.clientY );
-										/*
-										// Convert to W3C range:
-										var node = textRange.parentElement();
-										var start = Math.abs( textRange.duplicate().moveStart('character', -1000000) );
-										var r = textRange.duplicate();
-										r.moveToElementText( node );
-										r.collapse();
-										var start2 = Math.abs( r.moveStart('character', -1000000) );
+						};
 
-										range = doc.createRange();
-										range.setStart( node.firstChild, start - start2 );
-										range.collapse( true );
-										*/
-										range = textRange;
-									}
-									catch (ex)
-									{
-										range = doc.createRange();
-										range.setStartAfter( doc.body.lastChild );
-										range.collapse( true );
-									}
-								}
-							}
-						}
-					}
-
-					var count = data.files.length,
-						elementName = element.getName(),
-						handled = false;
-
-					if ( count==1 )
-					{
-						if (target.nodeName.toLowerCase() == "img" && elementName == "span" )
-						{
-							target.parentNode.replaceChild(element.$, target);
-							evData.originalNode = target;
-							handled = true;
-						}
-
-						if ( elementName == "a" )
-						{
-							var start;
-							if (range.startContainer)
-							{
-								start = range.startContainer;
-								if (start.nodeType == document.TEXT_NODE)
-									start = start.parentNode;
-								else
-								{
-									if (range.startOffset < start.childNodes.length)
-										start = start.childNodes[ range.startOffset ];
-								}
-							}
-							else
-								start = range.parentElement();
-
-							if (!start || target.nodeName.toLowerCase() == "img")
-								start = target;
-
-							var parent = start;
-							while ( parent && (parent.nodeType == document.ELEMENT_NODE) && (parent.nodeName.toLowerCase() != "a") )
-								parent = parent.parentNode;
-
-							if ( parent && parent.nodeName && parent.nodeName.toLowerCase() == "a" )
-							{
-								parent.parentNode.replaceChild(element.$, parent);
-								evData.originalNode = parent;
-								handled = true;
-							}
-							// dropping on an image without a parent link
-							if ( !handled && start.nodeName.toLowerCase() == "img" )
-							{
-								parent = start.ownerDocument.createElement('a');
-								parent.href = '#';
-								start.parentNode.replaceChild(parent, start);
-								parent.appendChild(start);
-
-								parent.parentNode.replaceChild(element.$, parent);
-								evData.originalNode = parent;
-								handled = true;
-							}
-						}
-					}
-
-					if (!handled)
-					{
-						if (range)
-						{
-							if ( range.pasteHTML )
-								range.pasteHTML( element.$.outerHTML );
-							else
-								range.insertNode( element.$ );
-						}
-						else
-							editor.insertElement( element );
-					}
-
-					setupCancelButton( editor, evData );
-					editor.fire( "saveSnapshot" );
+					CKEDITOR.plugins.simpleuploads.insertDroppedFile(editor, evData);
 				}
 			}
 		};
@@ -1129,10 +1120,31 @@ CKEDITOR.plugins.add( "simpleuploads",
 				visibleRoot = root;
 			}
 
-			root.on( "paste", pasteListener, null, {editor : editor	});
+			pasteRoot = editor.editable ? editor.editable() : root;
+
+			// Special case for IE in forcePasteAsPlainText:
+			// CKEditor uses the beforepaste event to move the target, but we can't use that to check for files,
+			// so in that case, set a listener on the document on each paste
+			if (CKEDITOR.env.ie && CKEDITOR.env.version>=11 && editor.config.forcePasteAsPlainText && editor.editable().isInline())
+			{
+				// Is an editable instance, so let's use attachListener here
+				pasteRoot.attachListener(pasteRoot, "beforepaste", function( bpEv ) {
+					// Only once, so we can check always which editor the paste belongs to
+					editor.document.on( "paste", function( pEv ) {
+						pEv.removeListener();
+
+						// redirect the original data to our paste listener
+						pasteListener(pEv);
+					}, null, {editor : editor });
+				});
+			}
+			else
+			{
+				// For everyone else, use the normal paste event
+				pasteRoot.on( "paste", pasteListener, null, {editor : editor }, 8);
+			}
 
 			root.on( 'dragenter', rootDragEnter);
-
 			root.on( 'dragleave', rootDragLeave);
 
 			// https://bugs.webkit.org/show_bug.cgi?id=57185
@@ -1145,19 +1157,7 @@ CKEDITOR.plugins.add( "simpleuploads",
 			root.on( 'drop', rootDropListener);
 		});
 
-		editor.on( 'contentDomUnload', function(ev) {
-			if (!root || !root.removeListener)
-				return;
-
-			root.removeListener( "paste", pasteListener);
-			root.removeListener( 'dragenter', rootDragEnter);
-			root.removeListener( 'dragleave', rootDragLeave);
-			root.removeListener( 'dragover', rootDragOver);
-			root.removeListener( 'drop', rootDropListener);
-
-			root = null;
-			visibleRoot = null;
-		});
+		editor.on( 'contentDomUnload', domUnload);
 
 		editor.plugins.fileDropHandler = {
 			addTarget : function( target, callback )
@@ -1217,34 +1217,29 @@ CKEDITOR.plugins.add( "simpleuploads",
 						data = ev.dataTransfer;
 					if ( data && data.files && data.files.length>0 )
 					{
-						for( var i=0; i<data.files.length; i++)
+						// Prevent default insertion
+						e.data.preventDefault();
+
+						// only one
+						for( var i=0; i<1; i++)
 						{
-							var file = data.files[ i ],
-								id = CKEDITOR.tools.getNextId(),
-								fileName = file.name;
-
-							// Prevent default insertion
-							e.data.preventDefault();
-
-							var evdata = {
+							var file = data.files[ i ];
+							var evData = {
 								context : ev,
-								name : fileName,
+								name : file.name,
 								file : file,
-								id : id
+								id : CKEDITOR.tools.getNextId(),
+								forceLink : false,
+								callback : callback,
+								mode : { type: "callback" }
 							};
 
-							evdata.callback = callback;
-
-							// only one
-							if (uploadFile( editor, false, evdata ))
-								return;
+							CKEDITOR.plugins.simpleuploads.processFileWithCallback( editor, evData );
 						}
 					}
 				});
 			}
 		};
-
-
 	}, //Init
 
 	afterInit: function( editor ) {
@@ -1257,21 +1252,402 @@ CKEDITOR.plugins.add( "simpleuploads",
 
 } );
 
+// API
+CKEDITOR.plugins.simpleuploads = {
+	getTimeStampId : (function()
+	{
+		var counter = 0;
+		return function()
+		{
+			counter++;
+			return (new Date()).toISOString().replace(/\..*/, "").replace(/\D/g, "_") + counter;
+		};
+	})(),
+
+	isImageExtension: function(editor, filename)
+	{
+		if (!editor.config.simpleuploads_imageExtensions)
+			return false;
+
+		var imageRegexp = new RegExp( "\.(?:" + editor.config.simpleuploads_imageExtensions + ")$", "i");
+		return imageRegexp.test( filename );
+	},
+
+	// Main entry point for callbacks
+	insertProcessedFile: function(editor, evData) {
+		evData.element = null;
+		evData.id = this.getTimeStampId(); // new id
+
+		switch (evData.mode.type)
+		{
+			case 'selectedFile':
+				var that = this;
+				window.setTimeout( function() {
+					that.insertSelectedFile( editor, evData );
+				}, 50);
+				break;
+
+			case 'pastedFile':
+				this.insertPastedFile( editor, evData );
+				break;
+
+			case 'callback':
+				var that = this;
+				window.setTimeout( function() {
+					that.processFileWithCallback( editor, evData );
+				}, 50);
+				break;
+
+			case 'droppedFile':
+				this.insertDroppedFile( editor, evData );
+				break;
+
+			case 'base64paste':
+				this.insertBase64File( editor, evData );
+				break;
+
+			default:
+				alert("Error, no valid type", evData.mode);
+				break;
+		}
+	},
+
+	// Insert a file from the toolbar buttons
+	insertSelectedFile: function(editor, evData) {
+		var mode = evData.mode,
+			i = mode.i,
+			count = mode.count;
+
+		// Upload the file
+		if (!uploadFile( editor, evData ))
+			return;
+
+		var element = evData.element;
+		if (!element)
+			return;
+
+		if (count == 1)
+		{
+			var selection = editor.getSelection(),
+				selected = selection.getSelectedElement(),
+				originalNode;
+
+			// If it's just one image and the user has another one selected, replace it
+			if (selected && selected.getName() == "img" && element.getName() == "span")
+			{
+				originalNode = selected.$;
+			}
+
+			// a link
+			if (element.getName() == "a")
+			{
+				var parent = selected,
+					ranges = selection.getRanges(),
+					range = ranges && ranges[0];
+
+				if (!parent)
+				{
+					if (ranges && ranges.length == 1)
+					{
+						parent = range.startContainer.$;
+						if (parent.nodeType == document.TEXT_NODE)
+							parent = parent.parentNode;
+					}
+				}
+
+				while ( parent && (parent.nodeType == document.ELEMENT_NODE) && (parent.nodeName.toLowerCase() != "a") )
+					parent = parent.parentNode;
+
+				if ( parent && parent.nodeName && parent.nodeName.toLowerCase() == "a" )
+				{
+					originalNode = parent;
+				}
+				// there was no link, check the best way to create one:
+
+				// create a link
+				if (!originalNode && range && (selected || !range.collapsed) )
+				{
+					var style = new CKEDITOR.style({ element: 'a', attributes: {href:'#'} } );
+					style.type = CKEDITOR.STYLE_INLINE; // need to override... dunno why.
+					style.applyToRange( range );
+
+					parent = range.startContainer.$;
+					if (parent.nodeType == document.TEXT_NODE)
+						parent = parent.parentNode;
+
+					originalNode = parent;
+				}
+			}
+
+			if (originalNode)
+			{
+				originalNode.parentNode.replaceChild(element.$, originalNode);
+				evData.originalNode = originalNode;
+				editor.fire( "saveSnapshot" );
+				return;
+			}
+		}
+
+		// insert a space between links
+		if (i>0 && element.getName()=="a")
+			editor.insertHtml("&nbsp;");
+
+		editor.insertElement(element);
+		setupCancelButton( editor, evData );
+	},
+
+	// Insert a file that has been pasted into the content (as File)
+	insertPastedFile: function(editor, evData) {
+		// Upload the file
+		if (!uploadFile( editor, evData ))
+			return;
+
+		var element = evData.element;
+
+		var dialog = evData.mode.dialog;
+		if (dialog)
+		{
+			editor.fire( "updateSnapshot" );
+			editor.insertElement(element);
+			editor.fire( "updateSnapshot" );
+		}
+		else
+		{
+			// Insert in the correct position after the pastebin has been removed
+			 var processElement = function() {
+				// Check if there's a valid selection or if it's the pastebin
+				var ranges = editor.getSelection().getRanges();
+
+				if (!ranges.length)
+				{
+					// Put back in the queue
+					window.setTimeout(processElement, 0);
+					return;
+				}
+				// verify that it has really been removed
+				if (editor.editable && editor.editable().$.querySelector("#cke_pastebin"))
+				{
+					// Put back in the queue
+					window.setTimeout(processElement, 0);
+					return;
+				}
+
+				editor.fire( "updateSnapshot" );
+				editor.insertElement(element);
+				editor.fire( "updateSnapshot" );
+				setupCancelButton( editor, evData );
+			 };
+			window.setTimeout(processElement, 0);
+		}
+	},
+
+	// The evData includes a callback that takes care of everything (a file dropped in a dialog)
+	processFileWithCallback: function(editor, evData) {
+		uploadFile( editor, evData );
+	},
+
+	insertDroppedFile: function(editor, evData) {
+		if (!uploadFile( editor, evData ))
+			return;
+
+		var element = evData.element;
+		var dropLocation = evData.mode.dropLocation,
+			range = dropLocation.range,
+			ev = dropLocation.ev,
+			count = dropLocation.count;
+
+		// if we're adding several links, add a space between them
+		if ( range && element.getName()=="a" )
+		{
+			if ( range.pasteHTML )
+				range.pasteHTML( "&nbsp;" ); // simple space doesn't work
+			else
+				range.insertNode( editor.document.$.createTextNode( ' ' ) );
+		}
+
+		var target = ev.target;
+		if (!range)
+		{
+			var doc = editor.document.$;
+			// Move to insertion point
+			/*
+			standard way: only implemented in Firefox 20
+			if (document.caretPositionFromPoint)
+			{
+				var caret = document.caretPositionFromPoint(ev.pageX, ev.pageY),
+					textNode = caret.offsetNode,
+					offset = caret.offset;
+			}
+			*/
+
+			// Firefox, custom properties in event.
+			if ( dropLocation.rangeParent )
+			{
+				// it seems that they aren't preserved in the ev after resending back the info
+				var node = dropLocation.rangeParent,
+					offset = dropLocation.rangeOffset;
+				range = doc.createRange();
+				range.setStart( node, offset );
+				range.collapse( true );
+			}
+			else
+			{
+				// Webkit, old documentView API
+				if ( document.caretRangeFromPoint )
+				{
+					range = doc.caretRangeFromPoint( ev.clientX, ev.clientY );
+				}
+				else
+				{
+					// IE
+					if (target.nodeName.toLowerCase()=="img")
+					{
+						range = doc.createRange();
+						range.selectNode(target);
+					} else if ( document.body.createTextRange )
+					{
+						var textRange = doc.body.createTextRange();
+						try
+						{
+							textRange.moveToPoint( ev.clientX, ev.clientY );
+							/*
+							// Convert to W3C range:
+							var node = textRange.parentElement();
+							var start = Math.abs( textRange.duplicate().moveStart('character', -1000000) );
+							var r = textRange.duplicate();
+							r.moveToElementText( node );
+							r.collapse();
+							var start2 = Math.abs( r.moveStart('character', -1000000) );
+
+							range = doc.createRange();
+							range.setStart( node.firstChild, start - start2 );
+							range.collapse( true );
+							*/
+							range = textRange;
+						}
+						catch (ex)
+						{
+							range = doc.createRange();
+							range.setStartAfter( doc.body.lastChild );
+							range.collapse( true );
+						}
+					}
+				}
+			}
+			dropLocation.range = range;
+		}
+
+		var elementName = element.getName(),
+			handled = false;
+
+		if ( count==1 )
+		{
+			if (target.nodeName.toLowerCase() == "img" && elementName == "span" )
+			{
+				target.parentNode.replaceChild(element.$, target);
+				evData.originalNode = target;
+				handled = true;
+			}
+
+			if ( elementName == "a" )
+			{
+				var start;
+				if (range.startContainer)
+				{
+					start = range.startContainer;
+					if (start.nodeType == document.TEXT_NODE)
+						start = start.parentNode;
+					else
+					{
+						if (range.startOffset < start.childNodes.length)
+							start = start.childNodes[ range.startOffset ];
+					}
+				}
+				else
+					start = range.parentElement();
+
+				if (!start || target.nodeName.toLowerCase() == "img")
+					start = target;
+
+				var parent = start;
+				while ( parent && (parent.nodeType == document.ELEMENT_NODE) && (parent.nodeName.toLowerCase() != "a") )
+					parent = parent.parentNode;
+
+				if ( parent && parent.nodeName && parent.nodeName.toLowerCase() == "a" )
+				{
+					parent.parentNode.replaceChild(element.$, parent);
+					evData.originalNode = parent;
+					handled = true;
+				}
+				// dropping on an image without a parent link
+				if ( !handled && start.nodeName.toLowerCase() == "img" )
+				{
+					parent = start.ownerDocument.createElement('a');
+					parent.href = '#';
+					start.parentNode.replaceChild(parent, start);
+					parent.appendChild(start);
+
+					parent.parentNode.replaceChild(element.$, parent);
+					evData.originalNode = parent;
+					handled = true;
+				}
+			}
+		}
+
+		if (!handled)
+		{
+			if (range)
+			{
+				if ( range.pasteHTML )
+					range.pasteHTML( element.$.outerHTML );
+				else
+					range.insertNode( element.$ );
+			}
+			else
+				editor.insertElement( element );
+		}
+
+		setupCancelButton( editor, evData );
+		editor.fire( "saveSnapshot" );
+	},
+
+	insertBase64File: function(editor, evData) {
+		delete evData.result;
+
+		var id = evData.mode.id;
+		var tmp = editor.document.getById(id);
+
+		if (!uploadFile(editor, evData))
+		{
+			tmp.remove();
+			if (evData.result)
+				editor.insertHTML(evData.result);
+
+			return;
+		}
+
+		editor.getSelection().selectElement(tmp);
+
+		editor.insertElement(evData.element);
+		setupCancelButton( editor, evData );
+	}
+};
+
 // Creates the element, but doesn't insert it
-function createPreview(data, editor, forceLink)
+function createPreview(editor, data)
 {
-	var isImage = editor.config.simpleuploads_imageRegexp.test( data.name ),
+	var isImage = CKEDITOR.plugins.simpleuploads.isImageExtension( editor, data.name ),
 		showImageProgress = !editor.config.simpleuploads_hideImageProgress,
 		element;
 
 	// Create and insert our element
-	if ( !forceLink && isImage && showImageProgress)
+	if ( !data.forceLink && isImage && showImageProgress)
 	{
 		element = createSVGAnimation(data.file, data.id, editor);
 	}
 	else
 	{
-		if ( isImage && !forceLink )
+		if ( isImage && !data.forceLink )
 			element = new CKEDITOR.dom.element( "span", editor.document );
 		else
 			element = new CKEDITOR.dom.element( "a", editor.document );
@@ -1293,6 +1669,7 @@ function createPreview(data, editor, forceLink)
 
 function errorListener(e)
 {
+	e.removeListener();
 	alert("Failed to load the image with the provided URL: '" + e.sender.data( 'cke-saved-src') + "'");
 	e.listenerData.remove();
 }
@@ -1316,26 +1693,68 @@ function checkLoadedImage(img, editor, el, name)
 	editor.fire( "updateSnapshot" );
 }
 
-
 // Sets up a XHR object to handle the upload
-function createXHRupload(editor, forceLink, data)
+function createXHRupload(editor, data)
 {
-	var xhr = new XMLHttpRequest(),
-		isImage = editor.config.simpleuploads_imageRegexp.test( data.name ),
-		attribute,
-		target = xhr.upload,
-		forImage;
+	var isImage = CKEDITOR.plugins.simpleuploads.isImageExtension( editor, data.name ),
+		attribute = "href",
+		forImage = false;
 
-	if ( !forceLink && isImage )
+	if ( !data.forceLink && isImage )
 	{
 		attribute = "src";
 		forImage=true;
 	}
-	else
+
+	if (data.callback)
+		data.callback.setup(data);
+
+	if (!data.url)
+		data.url = getUploadUrl(editor, 2, forImage);
+
+	if (data.requiresImage && !isImage)
 	{
-		attribute = "href";
-		forImage=false;
+		alert(editor.lang.simpleuploads.nonImageExtension);
+		return null;
 	}
+
+	var result = editor.fire("simpleuploads.startUpload", data);
+	// in v3 cancel() returns true and in v4 returns false
+	// if not canceled it's the data object, so let's use that.
+	if ( typeof result == "boolean" )
+		return null;
+
+	// instead of uploading, use base64 encoded data
+	if (data.url == "base64")
+	{
+		if (typeof data.file == "string")
+		{
+			setTimeout( function() {
+				receivedUrl(fileUrl, data, editor, el, attribute);
+			}, 100);
+			return {};
+		}
+		else
+		{
+			var reader = new FileReader();
+			reader.onload = function() {
+				var fileUrl = reader.result,
+					id = data.id,
+					el = editor.document.getById( id );
+
+				setTimeout( function() {
+					receivedUrl(fileUrl, data, editor, el, attribute);
+				}, 100);
+			};
+
+			reader.readAsDataURL( data.file );
+//			data.xhr = reader;
+		}
+		return {};
+	}
+
+	var xhr = new XMLHttpRequest(),
+		target = xhr.upload;
 
 	// nice progress effect. Opera used to lack xhr.upload
 	if ( target )
@@ -1346,51 +1765,59 @@ function createXHRupload(editor, forceLink, data)
 		};
 	}
 
-	if (data.callback)
-		data.callback.setup(data);
-
-	if (!data.url)
-		data.url = getUploadUrl(editor, 2, forImage);
-
-	var result = editor.fire("simpleuploads.startUpload", data);
-	// in v3 cancel() returns true and in v4 returns false
-	// if not canceled it's the data object, so let's use that.
-	if ( typeof result == "boolean" )
-		return null;
-
 	data.xhr = xhr;
 
 	// Upload the file
 	xhr.open("POST", data.url );
 	xhr.onload = function() {
-		// Upon finish, get the url and update the file
-//		var parts = xhr.responseText.match(/2,\s*("|')(.*?[^\\]?)\1(?:,\s*\1(.*?[^\\]?)\1)?\s*\)/),
+		var id = data.id,
+			el = editor.document.getById( id ),
+			fileUrl, msg;
 
-		var parts = xhr.responseText.match(/2,\s*("|')(.*?[^\\]?)\1(?:,\s*(.*?))\s*\);?\s*<\/script>/),
-			fileUrl = parts && parts[2],
-			msg = parts && parts[3],
-			id = data.id,
-			el = editor.document.getById( id );
-
-		if (msg)
-		{
-			// find out if it was a function or a string message:
-			var matchFunction = msg.match(/function\(\)\s*\{(.*)\}/);
-			if (matchFunction)
-				msg = new Function( matchFunction[1] );
-			else
-			{
-				var first=msg.substring(0,1);
-				if (first=="'" || first=='"')
-					msg = msg.substring( 1, msg.length-1 );
-			}
-		}
 		// final update
 		updateProgress(editor, id, null);
 		// Correct the Undo image
 		editor.fire( "updateSnapshot" );
 
-		editor.fire('simpleuploads.endUpload', { name: data.name, ok: (!!fileUrl) } );
+		var evtData = { xhr: xhr, data: data, element:el };
+		var result = editor.fire("simpleuploads.serverResponse", evtData);
+
+		// in v3 cancel() returns true and in v4 returns false
+		// if not canceled it's the evdata object
+		if ( typeof result == "boolean" )
+			return; // if the listener has Cancelled the event, exit and we suppose that it took care of everything by itself.
+
+		if (typeof evtData.url == "undefined")
+		{
+			// Upon finish, get the url and update the file
+			//var parts = xhr.responseText.match(/2,\s*("|')(.*?[^\\]?)\1(?:,\s*\1(.*?[^\\]?)\1)?\s*\)/),
+			//var parts = xhr.responseText.match(/\((?:"|')?\d+(?:"|')?,\s*("|')(.*?[^\\]?)\1(?:,\s*(.*?))?\s*\)\s*;?\s*<\/script>/),
+			var parts = xhr.responseText.match(/\((?:"|')?\d+(?:"|')?,\s*("|')(.*?[^\\]?)\1(?:,\s*(.*?))?\s*\)\s*;?/);
+
+			fileUrl = parts && parts[2];
+			msg = parts && parts[3];
+
+			if (msg)
+			{
+				// find out if it was a function or a string message:
+				var matchFunction = msg.match(/function\(\)\s*\{(.*)\}/);
+				if (matchFunction)
+					msg = new Function( matchFunction[1] );
+				else
+				{
+					var first=msg.substring(0,1);
+					if (first=="'" || first=='"')
+						msg = msg.substring( 1, msg.length-1 );
+				}
+			}
+		}
+		else
+		{
+			fileUrl = evtData.url;
+			msg = "";
+		}
+
+		editor.fire('simpleuploads.endUpload', { name: data.name, ok: (!!fileUrl), xhr : xhr, data : data } );
 		if (xhr.status!=200)
 		{
 			if (xhr.status == 413)
@@ -1403,6 +1830,23 @@ function createXHRupload(editor, forceLink, data)
 		}
 		else
 		{
+			// The server response usually is automatically parsed by the js engine, but in this case we get the "raw content"
+			// and must take care of un-escaping it.
+			// So far I haven't been able to find a single function that does it correctly in all the cases
+			if (fileUrl)
+			{
+				fileUrl = fileUrl.replace(/\\'/g, "'");
+
+				// Try to handle URLs with escaped chars like 51-Body/\u00E6\u00F8\u00E5.jpg
+				try
+				{
+					var o = JSON.parse('{"url":"' + fileUrl + '"}');
+					if (o && o.url)
+						fileUrl = o.url;
+				}
+				catch (ex) { }
+			}
+
 			if (!parts)
 			{
 				msg = 'Error posting the file to ' + data.url + '\r\nInvalid data returned (check console)';
@@ -1427,63 +1871,7 @@ function createXHRupload(editor, forceLink, data)
 
 		if ( fileUrl )
 		{
-			fileUrl = fileUrl.replace(/\\'/g, "'");
-			if (el.$.nodeName.toLowerCase() == "span")
-			{
-				// create the final img, getting rid of the fake div
-				var img;
-				if (data.originalNode)
-				{
-					img = data.originalNode.cloneNode( true );
-					// reset size
-					img.removeAttribute("width");
-					img.removeAttribute("height");
-					img.style.width = "";
-					img.style.height = "";
-					img = new CKEDITOR.dom.element( img );
-				}
-				else
-				{
-					img = new CKEDITOR.dom.element( "img", editor.document );
-				}
-
-				img.data( 'cke-saved-src', fileUrl);
-				img.setAttribute( 'src', fileUrl);
-
-				// wait to replace until the image is loaded to prevent flickering
-				img.on("load", function(e) {
-					e.removeListener();
-					img.removeListener( "error", errorListener);
-
-					checkLoadedImage(img, editor, el, data.name);
-				});
-
-				img.on("error", errorListener, null, el);
-
-				// in case the user tries to get the html right now, a little protection
-				el.data('cke-real-element-type', "img");
-				el.data('cke-realelement', encodeURIComponent( img.getOuterHtml() ));
-				el.data('cke-real-node-type', CKEDITOR.NODE_ELEMENT);
-
-				return;
-			}
-			if (data.originalNode)
-			{
-				var newEl = data.originalNode.cloneNode( true );
-				el.$.parentNode.replaceChild(newEl, el.$);
-				el = new CKEDITOR.dom.element( newEl );
-			}
-			else
-			{
-				el.removeAttribute( "id" );
-				el.removeAttribute( "class" );
-				el.removeAttribute( 'contentEditable' );
-				el.setHtml( el.getFirst().getHtml() );
-			}
-
-			el.data( 'cke-saved-' + attribute, fileUrl);
-			el.setAttribute( attribute, fileUrl);
-			editor.fire('simpleuploads.finishedUpload', { name: data.name, element: el } );
+			receivedUrl(fileUrl, data, editor, el, attribute);
 		}
 		else
 		{
@@ -1540,17 +1928,35 @@ function createXHRupload(editor, forceLink, data)
 	return xhr;
 }
 
-// Takes care of uploading the file object using XHR
-function uploadFile(editor, forceLink, data)
+// Takes care of uploading the file using XHR
+function uploadFile(editor, data)
 {
-	var xhr = createXHRupload(editor, forceLink, data);
+	if (!data.callback)
+		createPreview(editor, data);
 
+	var xhr = createXHRupload(editor, data);
 	if (!xhr)
+	{
+		data.result = data.result || "";
 		return false;
+	}
+	// FileReader
+	if (!xhr.send)
+		return true;
 
 	if (data.callback && data.callback.start)
 		data.callback.start(data);
 
+	if (typeof data.file == "string")
+		sendBase64File( data, xhr);
+	else
+		sendBlobFile( data, xhr);
+
+	return true;
+}
+
+function sendBlobFile(data, xhr)
+{
 	var formdata = new FormData();
 	formdata.append( "upload", data.file, data.name );
 	// Add extra fields if provided
@@ -1563,9 +1969,62 @@ function uploadFile(editor, forceLink, data)
 				formdata.append( prop, obj[prop] );
 		}
 	}
+	if (data.extraHeaders) {
+		var headers = data.extraHeaders;
+		for (var header in headers){
+			if( headers.hasOwnProperty( header )){
+				xhr.setRequestHeader(header, headers[header]);
+			}
+		}
+	}
 	xhr.send( formdata );
-	return true;
 }
+
+function sendBase64File(data, xhr)
+{
+	// Create the multipart data upload.
+	var BOUNDARY = "---------------------------1966284435497298061834782736",
+		rn = "\r\n",
+		req = "--" + BOUNDARY,
+		type = data.name.match(/\.(\w+)$/)[1];
+
+	req += rn + "Content-Disposition: form-data; name=\"upload\"; filename=\"" + data.name + "\"";
+	req	+= rn + "Content-type: image/" + type;
+	req += rn + rn + window.atob( data.file.split(',')[1] );
+	req += rn + "--" + BOUNDARY;
+
+	// Add extra fields if provided
+	if (data.extraFields)
+	{
+		var obj = data.extraFields;
+		for (var prop in obj)
+		{
+			req += rn + "Content-Disposition: form-data; name=\"" + unescape(encodeURIComponent( prop )).replace(/=/g, "\\=") + "\"";
+			req += rn + rn + unescape(encodeURIComponent( obj[prop] )) ;
+			req += rn + "--" + BOUNDARY;
+		}
+	}
+
+	req += "--";
+
+	xhr.setRequestHeader("Content-Type", "multipart/form-data; boundary=" + BOUNDARY);
+	/*
+	if (xhr.sendAsBinary)
+		xhr.sendAsBinary(req);
+	else
+	{
+		// emulate sendAsBinary for IE11 & Chrome
+		*/
+		var bufferData = new ArrayBuffer(req.length);
+		var ui8a = new Uint8Array(bufferData, 0);
+		for (var i = 0; i < req.length; i++)
+			ui8a[i] = (req.charCodeAt(i) & 0xff);
+		xhr.send(ui8a);
+		/*
+	}
+	*/
+}
+
 
 function updateProgress(editor, id, evt)
 {
@@ -1667,10 +2126,15 @@ function createSVGAnimation( file, id, editor )
 
 			// in IE it's inserted with the HTML, so we can't reuse the svg object
 			var svg = doc.getElementById("svg" + id);
-			svg.setAttribute("width", this.width + "px");
-			svg.setAttribute("height", this.height + "px");
+			if (svg)
+			{
+				svg.setAttribute("width", this.width + "px");
+				svg.setAttribute("height", this.height + "px");
+			}
 			// Chrome
-			doc.getElementById(id).style.width = this.width + "px";
+			var preview = doc.getElementById(id);
+			if (preview)
+				preview.style.width = this.width + "px";
 		};
 		img.src = theURL.createObjectURL( file );
 	}
@@ -1743,7 +2207,6 @@ function createSVGAnimation( file, id, editor )
 	return element;
 }
 
-
 	// Compatibility between CKEditor 3 and 4
 	if (CKEDITOR.skins)
 	{
@@ -1767,11 +2230,16 @@ function createSVGAnimation( file, id, editor )
 		if (element.type=="file")
 			return;
 
+		var imageDialog = (dialogName.substr(0,5)=="image");
+
 		var targetField = element.filebrowser.target.split(":");
 		var callback = {
 			setup : function(data) {
 				if (!definition.uploadUrl)
 					return;
+
+				if (imageDialog)
+					data.requiresImage = true;
 
 				var params = {};
 				params.CKEditor = editor.name;
@@ -1821,8 +2289,7 @@ function createSVGAnimation( file, id, editor )
 				if ( typeof msg == 'function' && msg.call( data.context.sender ) === false )
 					return;
 
-				if (definition.onFileSelect)
-				{
+				if (definition.onFileSelect) {
 					if ( definition.onFileSelect.call( data.context.sender, url, msg ) === false )
 						return;
 				}
@@ -1832,24 +2299,22 @@ function createSVGAnimation( file, id, editor )
 
 				dialog.getContentElement( targetField[ 0 ], targetField[ 1 ] ).setValue( url );
 				dialog.selectPage( targetField[ 0 ] );
-
 			}
 		};
 
-		if (element.filebrowser.action == "QuickUpload")
-		{
+		if (element.filebrowser.action == "QuickUpload") {
 			definition.hasQuickUpload = true;
 			definition.onFileSelect = null;
 			if (!editor.config.simpleuploads_respectDialogUploads)
 			{
-				element.label = ( dialogName.substr(0,5)=="image" ? editor.lang.simpleuploads.addImage : editor.lang.simpleuploads.addFile);
+				element.label = ( imageDialog ? editor.lang.simpleuploads.addImage : editor.lang.simpleuploads.addFile);
 
 				element.onClick = function( evt )
 				{
 					// "element" here means the definition object, so we need to find the correct
 					// button to scope the event call
 					//var sender = evt.sender;
-					PickAndUploadFile(editor, false, evt, callback);
+					PickAndSendFile(editor, imageDialog, evt, callback);
 					return false;
 				};
 
@@ -1871,7 +2336,8 @@ function createSVGAnimation( file, id, editor )
 		if (element.filebrowser.action == "QuickUpload")
 			definition.uploadUrl = element.filebrowser.url;
 
-		definition.onShow = CKEDITOR.tools.override( definition.onShow, function( original )
+		var original = definition.onShow || (function(){});
+		definition.onShow = CKEDITOR.tools.override( original, function( original )
 		{
 			return function()
 			{
@@ -1896,6 +2362,9 @@ function createSVGAnimation( file, id, editor )
 		for ( var i in elements )
 		{
 			var element = elements[ i ];
+			// If due to some customization or external library the object isn't valid, skip it.
+			if (!element)
+				continue;
 
 			if ( element.type == 'hbox' || element.type == 'vbox' || element.type == 'fieldset' )
 				applySimpleUpload( editor, dialogName, definition, element.children );
@@ -1935,11 +2404,31 @@ function createSVGAnimation( file, id, editor )
 			i,
 			item;
 
-		// we want IE11 here to embed images as base64 (at least for the moment)
+		// We want IE11 here to embed images as base64 (at least for the moment)
 		// later use them as blob if we aren't in a dialog
-		var data = e.data.$.clipboardData; // || window.clipboardData;
+
+		// In IE11 we use the images at this point only if forcePasteAsPlainText has been set
+		// It doesn't work due to https://connect.microsoft.com/IE/feedback/details/813618/calling-xhr-open-in-a-paste-event-throws-an-access-denied-error
+		var data = (e.data && e.data.$.clipboardData) || (editor.config.forcePasteAsPlainText && window.clipboardData);
 		if (!data)
 			return;
+
+
+		// If forcePasteAsPlainText is set, try to detect if we're with Firefox and the clipboard content is only an image
+		if (CKEDITOR.env.gecko && editor.config.forcePasteAsPlainText)
+		{
+			if (data.types.length===0)
+			{
+				// only once:
+				editor.on( 'beforePaste', function( evt ) {
+					evt.removeListener();
+
+					// Force html mode :-)
+					evt.data.type = 'html';
+				} );
+				return;
+			}
+		}
 
 		// Chrome has clipboardData.items. Other browsers don't provide this info at the moment.
 		// Firefox implements clipboardData.files in 22
@@ -1968,41 +2457,16 @@ function createSVGAnimation( file, id, editor )
 
 			e.data.preventDefault();
 
-			var file = (item.getAsFile ? item.getAsFile() : item),
-				id = getTimeStampId(),
-				fileName = file.name || (id + ".png"),
-				evData = {
-					context : e.data.$,
-					name : fileName,
-					file : file,
-					id : id
-				};
-			createPreview(evData, editor);
+			var file = (item.getAsFile ? item.getAsFile() : item);
 
-			// Upload the file
-			if (!uploadFile( editor, false, evData ))
-				continue;
-
-			var element = evData.element;
-
-			if (dialog)
+			if (CKEDITOR.env.ie || editor.config.forcePasteAsPlainText)
 			{
-				editor.fire( "updateSnapshot" );
-				editor.insertElement(element);
-				editor.fire( "updateSnapshot" );
+				setTimeout( function() {
+					processPastedFile(file, e);
+				}, 100);
 			}
 			else
-			{
-				// Insert in the correct position after the pastebin has been removed
-				editor.document.getBody().append( element );
-
-				window.setTimeout( function() {
-					editor.fire( "updateSnapshot" );
-					editor.insertElement(element);
-					editor.fire( "updateSnapshot" );
-					setupCancelButton( editor, evData );
-				}, 0);
-			}
+				processPastedFile(file, e);
 		}
 
 		// autoclose the dialog
@@ -2010,11 +2474,33 @@ function createSVGAnimation( file, id, editor )
 			dialog.hide();
 	}
 
+	function processPastedFile(file, e)
+	{
+		var editor = e.listenerData.editor,
+			dialog = e.listenerData.dialog;
+
+		var id = CKEDITOR.plugins.simpleuploads.getTimeStampId(),
+			fileName = file.name || (id + ".png"),
+			evData = {
+				context : e.data.$,
+				name : fileName,
+				file : file,
+				forceLink : false,
+				id : id,
+				mode : {
+					type : 'pastedFile',
+					dialog : dialog
+				}
+			};
+
+		CKEDITOR.plugins.simpleuploads.insertPastedFile(editor, evData);
+	}
+
 	function setupPasteListener(iframe)
 	{
 		var doc = iframe.getFrameDocument(),
 			body = doc.getBody();
-		if (!body || !body.$ || body.$.contentEditable != "true")
+		if (!body || !body.$ || (body.$.contentEditable != "true" && doc.$.designMode != "on"))
 		{
 			setTimeout(function() { setupPasteListener(iframe);}, 100);
 			return;
@@ -2057,7 +2543,6 @@ function createSVGAnimation( file, id, editor )
 			} );
 
 		}
-
 	}, null, null, 30 );
 
 })();
@@ -2077,6 +2562,23 @@ function createSVGAnimation( file, id, editor )
  */
 
 /**
+ * Fired when the server sends the response of an upload.
+ *
+ * @since 4.3.6
+ * @name CKEDITOR.editor#simpleuploads.serverResponse
+ * @event
+ * @param {Object} [xhr] The XHR with the request.
+ * @param {Object} [data] The original data object of this upload.
+ * Upon processing this event, a listener can set a "url" property on the event.data object and that will tell to the SimpleUploads plugin
+ * that your code has processed the response.
+ * If url is an empty string it means that the upload has failed and that the upload placeholder must be removed silently
+ * Otherwise it will be treated as the response from the server
+ * This way you can use different responses from your server that doesn't follow the QuickUpload pattern, as well as hook any additional processing that
+ * you might need.
+ * Please, note that this is fired only for uploads using XHR, old IEs are excluded and they need the default response from the server.
+ */
+
+/**
  * Fired when file upload ends on the "simpleuploads" plugin
  *
  * @since 3.1
@@ -2084,6 +2586,8 @@ function createSVGAnimation( file, id, editor )
  * @event
  * @param {String} [name] The file name.
  * @param {Boolean} [ok] Whether the file has been correctly uploaded or not
+ * @param {Object} [xhr] The XHR with the request. Since 4.3
+ * @param {Object} [data] The original data object of this upload. Since 4.3
  */
 
 /**
@@ -2096,6 +2600,15 @@ function createSVGAnimation( file, id, editor )
  * @param {CKEDITOR.dom.element} [element] The element node that has been inserted
  */
 
+
+/**
+ * Fired when an image has been selected, before it's uploaded. It provides a reference to an img element
+ * that contains the selected file. Extends the data provided in the simpleuploads.startUpload event
+ * @since 4.2
+ * @name CKEDITOR.editor#simpleuploads.localImageReady
+ * @event
+ * @param {Image} [image] The element node that has been inserted
+ */
 
 /**
  * Class to apply to the editor container (ie: the border outside the editor) when a file is dragged on the page
@@ -2199,5 +2712,26 @@ function createSVGAnimation( file, id, editor )
  *
  * @since 4.1
  * @cfg {Boolean} [simpleuploads_hideImageProgress=null]
+ * @member CKEDITOR.config
+ */
+
+/**
+ * If it's set to true, bmp images will be converted to png before uploading (you must add the "bmp" to the list of allowed extensions)
+ *
+ *		CKEDITOR.config.simpleuploads_convertBmp=true;
+ *
+ * @since 4.2
+ * @cfg {Boolean} [simpleuploads_convertBmp=null]
+ * @member CKEDITOR.config
+ */
+
+/**
+ * It's an object that can contain two members: width and height specifying the maximum dimensions (in pixels) allowed for images.
+ * if the image is bigger in any of those dimensions, the upload will be rejected.
+ *
+ *		CKEDITOR.config.simpleuploads_maximumDimensions={width:500, height:400};
+ *
+ * @since 4.2
+ * @cfg {Object} [simpleuploads_maximumDimensions=null]
  * @member CKEDITOR.config
  */

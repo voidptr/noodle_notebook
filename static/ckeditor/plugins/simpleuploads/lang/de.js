@@ -15,6 +15,15 @@
         invalidExtension : 'Die ausgewählte Datei ist nicht zugelassen. Bitte lade nur zugelassene Dateien hoch.',
 
         // The extension isn't included in config.simpleuploads_acceptedExtensions
-        nonAcceptedExtension: 'Die ausgewählte Datei ist nicht zugelassen. Bitte lade nur zugelassene Dateien hoch:\r\n%0'
+        nonAcceptedExtension: 'Die ausgewählte Datei ist nicht zugelassen. Bitte lade nur zugelassene Dateien hoch:\r\n%0',
+
+		// The file isn't an accepted type for images
+		nonImageExtension: 'Sie müssen ein Bild auswählen',
+
+		// The width of the image is over the allowed maximum
+		imageTooWide: 'The image is too wide',
+
+		// The height of the image is over the allowed maximum
+		imageTooTall: 'The image is too tall'
     }
 );

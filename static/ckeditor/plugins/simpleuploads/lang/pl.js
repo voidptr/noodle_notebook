@@ -15,6 +15,15 @@
         invalidExtension : 'Nieprawidłowy typ pliku. Proszę wybrać plik o dopuszczalnym typie.',
 
         // The extension isn't included in config.simpleuploads_acceptedExtensions
-        nonAcceptedExtension: 'Nieprawidłowy typ pliku. Proszę wybrać plik o dopuszczalnym typie:\r\n%0'
+        nonAcceptedExtension: 'Nieprawidłowy typ pliku. Proszę wybrać plik o dopuszczalnym typie:\r\n%0',
+
+		// The file isn't an accepted type for images
+		nonImageExtension: 'Musisz wybrać zdjęcie',
+
+		// The width of the image is over the allowed maximum
+		imageTooWide: 'The image is too wide',
+
+		// The height of the image is over the allowed maximum
+		imageTooTall: 'The image is too tall'
     }
 );

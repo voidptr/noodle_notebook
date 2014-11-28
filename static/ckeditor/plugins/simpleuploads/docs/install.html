@@ -101,12 +101,83 @@
 		</ul>
 		During a drop, if the Shift key is pressed, create a link (a) instead of an image (img)<br>
 		Added new simpleuploads_hideImageProgress option to use always plain text for the uploads instead of the image preview<br>
-		Handle the third optional parameter in the upload callback for dialogs if it is a function<br>
+		Handle the third optional parameter in the upload callback for dialogs if it is a function (compatibility with the default uploads)<br>
 		Adjusted the htmlFilter that strips the temporary elements to deal with changes in CKEditor 4.3<br>
 		Don't break the table dialog if the plugin "dialogadvtab" is not included<br>
 		Corrected compatibility in dialogs with IE8<br>
-
-
+		Added German and Polish translations
+		</li>
+	<li>4.1.1: 8-January-2014<br>
+		Added validation of images for the toolbar button and image dialogs<br>
+		Adjusted regexp to parse results to handle better OTRS
+		</li>
+	<li>4.1.2: <br>
+		Allow to set "simpleuploads_imageExtensions" to false or an empty string so no file is inserted as image<br>
+		Correctly send extraFields when pasting an image in Firefox and IE11
+		</li>
+	<li>4.1.3: <br>
+		Modified the function in getTimeStampId to toISOString and the regexp to protect against third party libraries<br>
+		Handle pasting of images if forcePasteAsPlainText is enabled<br>
+		</li>
+	<li>4.1.4: 16-January-2014<br>
+		Readjusted for changes in the image2 widget<br>
+		</li>
+	<li>4.2.0: 2nd-march-2014<br>
+		New event simpleuploads.localImageReady that allows better checks on the selected images (not available for IE8 &amp; IE9).<br>
+		Based on this event, two new options are available, simpleuploads_convertBmp and simpleuploads_maximumDimensions<br>
+		More features (local resizing) will be available in a future release.<br>
+		This event requires asynchronous processing, so maybe there are situations that I didn't test properly, please, cautious with this update
+		for a few days.<br>
+		-Fixed bug with the paste dialog due to recent changes in CKEditor
+		</li>
+	<li>4.2.1: 9-March-2014<br>
+		Fix <a href='http://ckeditor.com/comment/130803#comment-130803'>memory leak</a> by reference to the editor even after it has been destroyed<br>
+		Added new translations
+		</li>
+	<li>4.2.2: 13-March-2014<br>
+		If CKEditor was launched in a jQueryUI modal dialog, the file picker didn't work.
+		</li>
+	<li>4.2.3: 27-March-2014<br>
+		Detect the response sent after an upload even if it incorrectly has quotes around the funcNumber paramenter.
+		</li>
+	<li>4.2.4: 4-April-2014<br>
+		Prevent firing the "blur" event on the editor when clicking on the upload buttons with Chrome.<br>
+		Correct detection of the toolbar buttons in IE8.<br>
+		Avoid error when integrating with a dialog that lacks an onShow handler.
+		</li>
+	<li>4.2.5: 16-May-2014<br>
+		Allow to embed  the files as base64 data: URLs if the filebrowserUploadUrl is set to "<b>base64</b>"
+		</li>
+	<li>4.2.6: 19-May-2014<br>
+		Protection to avoid errors with the paste dialog in a smartgwt environment<br>
+		Disable upload buttons if base64 encoding has been selected for old IEs
+		</li>
+	<li>4.3.0: 12-June-2014<br>
+		Disable the sendAsBinary method in Firefox to avoid the compatibility warning<br>
+		New optional parameter that can be used to <a href="#extraHeaders">set custom http headers in the XHR</a><br>
+		Avoid temporary visible space while pasting an image with IE11 or Firefox<br>
+		Adjusted the regexp to handle new KCFinder<br>
+		Included the xhr and original data object in the simpleuploads.endUpload event<br>
+		</li>
+	<li>4.3.1: 22-June-2014<br>
+		Correct the API that handles modified images if a dialog is open
+		</li>
+	<li>4.3.2: 26-June-2014<br>
+		Try to parse correctly the url of the uploaded file if it contains escaped chars like \u00E6
+		</li>
+	<li>4.3.3: 27-June-2014<br>
+		Fix the previous two bugs when using the Upload button in the Image dialog
+		</li>
+	<li>4.3.4: 20-July-2014<br>
+		Pasting an image in Chrome placed it at the start of the content depending on the page.
+		</li>
+	<li>4.3.5: 2-September-2014<br>
+		Fixed regression of 4.3.4 for CKEditor 3.6
+		</li>
+	<li>4.3.6: 27-September-2014<br>
+		The toolbar buttons used an incorrect syntax in the requiredContent definition for the ACF.<br>
+		<a href='#serverResponse'>New event 'serverResponse'</a> to handle custom responses from the server
+		</li>
 </ol>
 
 <h2>Installation</h2>
@@ -144,6 +215,8 @@ If you are already using other additional plugins, then you must have a single e
 <p>You have to configure the <a href="http://docs.cksource.com/CKEditor_3.x/Developers_Guide/File_Browser_%28Uploader%29/Custom_File_Browser">filebrowserImageUploadUrl and filebrowserUploadUrl</a> entries as you might have already done to allow the user to upload files and images. You can use this <a href="http://alfonsoml.blogspot.com/2013/08/a-basic-upload-script-for-ckeditor.html">basic sample</a> if you want to use some existing code.</p>
 <p>The goal is to send a response like this (using the proper parameters for $funcNum and $url):</p>
 <pre>&lt;script type='text/javascript'&gt; window.parent.CKEDITOR.tools.callFunction($funcNum, '$url', '$message')&lt;/script&gt;</pre>
+
+<p>Since 4.2.5 it's possible to embed  the files as base64 data: URLs if the filebrowserUploadUrl is set to "<b>base64</b>". You must be very careful about using this option: CKEditor can choke on the content if the user tries to add big files, data processing will be slower, you should extract the embedded files when the user saves the data because otherwise the visitors to the page will have a worse experience due to the lack of caching and parallel download of resources.</p>
 
 <p>If you're using <a href="http://www.liferay.com/community/wiki/-/wiki/Main/Paste+images+and+docs+right+into+Wiki+-+CKEditor">Liferay, check these detailed instructions</a></p>
 <p id='cssConfig'>Since 2.7 it's possible to specify the shadows (or whatever CSS effects that you prefer) to use while a file is dragged over the page and an editor.<br>
@@ -195,9 +268,17 @@ Anyway, as usual with my plugins, IE6 and IE7 are not supported, nor pages in Qu
 Since 4.1 you can opt to always use the plain text upload instead of the image preview with the grayscale by setting the global option simpleuploads_hideImageProgress to true</p>
 <pre><b>CKEDITOR.config.simpleuploads_hideImageProgress</b> = true</pre>
 
+<p>
+In 4.2 there are two new properties:<br>
+<pre><b>CKEDITOR.config.simpleuploads_convertBmp</b> = true</pre>
+Turns selected bmp images to png before they are uploaded to the server (you must add the "bmp" to the list of allowed extensions)<br>
+The <b>simpleuploads_maximumDimensions</b> option allows to define an object that specifies the maximum dimensions in pixels for uploaded images
+<pre><b>CKEDITOR.config.simpleuploads_maximumDimensions</b> = {width:500, height:400}</pre>
+</p>
+
 <h3 id="events">4. Events</h3>
 <p>The plugin generates three custom events so you can show a notification like in the demo page while a file is being uploaded.<br>
-This is the signature of the methods:
+These are the signatures of the methods:
 <pre>
  /**
  * Fired when file starts being uploaded by the "simpleuploads" plugin
@@ -208,6 +289,23 @@ This is the signature of the methods:
  * @param {String|Object} [context] Context that caused the upload (a string if it's a pasted image, a DOM event for drag&amp;drop and copied files, the toolbar button for those cases)
  * @param {Object} [file] The file itself (if available).
   */
+
+/**
+ * Fired when the server sends the response of an upload.
+ *
+ * @since 4.3.6
+ * @name CKEDITOR.editor#<a name='serverResponse'>simpleuploads.serverResponse</a>
+ * @event
+ * @param {Object} [xhr] The XHR with the request.
+ * @param {Object} [data] The original data object of this upload.
+ * Upon processing this event, a listener can set a "url" property on the event.data object and that will tell to the SimpleUploads plugin
+ * that your code has processed the response.
+ * If url is an empty string it means that the upload has failed and that the upload placeholder must be removed silently
+ * Otherwise it will be treated as the response from the server
+ * This way you can use different responses from your server that doesn't follow the QuickUpload pattern, as well as hook any additional processing that
+ * you might need.
+ * Please, note that this is fired only for uploads using XHR, old IEs are excluded and they need the default response from the server.
+ */
 
 /**
  * Fired when file upload finishes on the "simpleuploads" plugin
@@ -266,7 +364,7 @@ CKEDITOR.on('instanceReady', function(e) {
 	});
 });
 </pre>
-
+<p id='extraHeaders'>Since 4.3.0 there's a new optional "extraHeaders" property to add custom http headers to the XHR request</p>
 
 <p>The finishedUpload event introduced in 3.3.4 allows to modify the final element, for example removing the dimension attributes and adding our own class:
 <pre>
@@ -286,6 +384,12 @@ CKEDITOR.on('instanceReady', function(e) {
 	});
 });
 </pre>
+<p>Version 4.2 adds a "simpleuploads.localImageReady" event that takes care of loading selected images into an Image element so it's possible for example to check its dimensions, convert between formats or modify it.<br>
+This event is used to implement the new simpleuploads_convertBmp and simpleuploads_maximumDimensions options (you can check that code to better understand how to use it. I might refine it in a future version and I'll provide samples in my blog according to the requests)<br>
+This event (and the new options) aren't available for IE 8 and 9
+</p>
+
+
 <h3 id='CORS'>5. Cross domain file uploads</h3>
 <p>In version 3.4 I've added support to upload files across domains. <br>
 This is based on the  <a href="https://developer.mozilla.org/en-US/docs/HTTP/Access_control_CORS ">CORS</a> spec. At the moment this won't work with IE < 10: IE8 doesn't support XHR uploads and IE9 requires the use of the custom XDomainRequest that also seems to be restricted about what it can do; I don't plan to work on those older versions of IE. </p>
