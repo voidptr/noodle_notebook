@@ -138,21 +138,19 @@ CKEDITOR.timestamp='ABCD';
 		CKEDITOR.disableAutoInline = true;
 
 		CKEDITOR.inline( 'inline1', {
-			extraPlugins: 'sharedspace,allowsave,imagebrowser,button-h1,button-h2,button-h3,button-h4,button-h5,button-h6,simpleuploads',
+			extraPlugins: 'sharedspace,allowsave,imagebrowser,button-h1,button-h2,button-h3,button-h4,button-h5,button-h6,simpleuploads,htmlbuttons,sourcedialog,print,allownow5,allowdate',
 			removePlugins: 'floatingspace,resize',
 			sharedSpaces: {
 				top: 'top',
 				bottom: 'bottom'
 			},
-            imageBrowser_listUrl: "/_browse_images",
-            filebrowserUploadUrl : "/_upload"
-
+            imageBrowser_listUrl: "/_browse_images"
 		});
         CKEDITOR.config.simpleuploads_containerover='border:1px solid red !important;';
         CKEDITOR.config.simpleuploads_editorover='background-color:yellow !important;';
         CKEDITOR.config.simpleuploads_coverover='border:1px solid red !important;';
         CKEDITOR.config.simpleuploads_dialogover='border:1px solid red !important;';
-        config.simpleuploads_respectDialogUploads=true;
+        CKEDITOR.config.simpleuploads_respectDialogUploads=true;
 </script>
 </body>
 </html>

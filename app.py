@@ -1,3 +1,5 @@
+#!/usr/local/bin/python 
+
 import os
 from urlparse import urlparse
 from flask import Flask, render_template, render_template_string, Markup, request, json, redirect, url_for, jsonify, make_response

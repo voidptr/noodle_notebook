@@ -3,14 +3,57 @@
  * For licensing, see LICENSE.html or http://ckeditor.com/license
  */
 
+
 CKEDITOR.editorConfig = function( config ) {
 
     //config.skin = 'kama';
     //config.skin = 'monoo';
 
     config.filebrowserImageUploadUrl = '/_upload';
+    config.filebrowserUploadUrl = '/_upload';
+
     config.toolbarLocation = 'top';
-    config.extraPlugins = 'allowsave,button-h1,button-h2,button-h3,button-h4,button-h5,button-h6';
+    config.extraPlugins = 'allowsave,button-h1,button-h2,button-h3,button-h4,button-h5,button-h6,htmlbuttons,sourcedialog,print,allownow5,allowdate';
+
+    config.htmlbuttons = [
+        {
+            name:'FormattedBox',
+            icon:'ic_view_day_black_48dp.png',
+            html:'<pre> </pre>',
+            title:'Formatted Box'
+        },
+        {
+            name:'FilePath',
+            icon:'path-blue.png',
+            html:'<strong><span style="color:#0000FF"> </span></strong>', 
+            title:'Path'
+        },
+        {
+            name:'Pink',
+            icon:'weir-pink.png',
+            html:'<strong><span style="color:#EE82EE"> </span></strong>',  
+            title:'Laptop Pink'
+        },
+        {
+            name:'Aqua',
+            icon:'atlantis-blue.png',
+            html:'<strong><span style="color:#40E0D0"> </span></strong>',  
+            title:'Server Aqua'
+        },
+        {
+            name:'Red',
+            icon:'hpcc-red.png',
+            html:'<strong><span style="color:#FF0000"> </span></strong>', 
+            title:'Cluster Red'
+        },
+        {
+            name:'Yellow',
+            icon:'thor-yellow.png',
+            html:'<strong><span style="color:#FFD700"> </span></strong>', 
+            title:'Desktop Yellow'
+        }
+
+    ];
 
     // This is actually the default value.
     config.keystrokes =
@@ -31,6 +74,9 @@ CKEDITOR.editorConfig = function( config ) {
         [ CKEDITOR.CTRL + 53 /*5*/, 'button-h5'],
         [ CKEDITOR.CTRL + 54 /*6*/, 'button-h6'],
 
+        [ CKEDITOR.CTRL + 56 /*8*/, 'bulletedlist' ],
+        [ CKEDITOR.CTRL + CKEDITOR.SHIFT + 56 /*8*/, 'bulletedListStyle' ],
+
         [ CKEDITOR.CTRL + 76 /*L*/, 'link' ],
 
         [ CKEDITOR.CTRL + 66 /*B*/, 'bold' ],
@@ -45,22 +91,29 @@ CKEDITOR.editorConfig = function( config ) {
     { 
         name: 'document',    
         groups: [ 'mode', 'document', 'doctools' ], 
-        items: [ 'Source', 'Save', 'NewPage', 'DocProps', 'Preview', 'Print', 'Templates', 'document' ] 
+        items: [ 'Save', 'DocProps', 'Preview', 'Print', 'document' ] 
     },
     { 
         name: 'editing',     
         groups: [ 'find', 'selection', 'spellchecker' ], 
-        items: [ 'Find', 'Replace', 'SelectAll', 'Scayt' ] 
+        items: [ 'Find', 'Replace', 
+        //'SelectAll', 'Scayt' 
+        ] 
     },
     { 
         name: 'insert', 
-        items: [ 'CreatePlaceholder', 'Image', 'Flash', 'Table', 'HorizontalRule', 
-        //'Smiley', 
-        'SpecialChar', 'PageBreak', 
-        //'Iframe', 
+        items: [ 'CreatePlaceholder', 'Image', 'Flash', 'Table', 
+        //'HorizontalRule', 
+        'SpecialChar', 
+        //'PageBreak', 
         'InsertPre' ]
     },
-//    '/',
+    { 
+        name: 'butts', 
+        items: [ 'CreatePlaceholder','FormattedBox', 'FilePath', 'Pink', 'Red', 'Aqua', 'Yellow',
+        'InsertPre' ]
+    },
+
     { 
         name: 'basicstyles', 
         groups: [ 'basicstyles', 'cleanup' ], 
@@ -77,10 +130,19 @@ CKEDITOR.editorConfig = function( config ) {
         name: 'links', 
         items: [ 'Link', 'Unlink', 'Anchor' ] 
     },
+    { 
+        name: 'sourcedialog', 
+        items: [ 'Sourcedialog' ] 
+    },
     '/',
     { name: 'styles', items: [ 'Styles', 'Format', 'Font', 'FontSize' ] },
     { name: 'colors', items: [ 'TextColor', 'BGColor' ] },
-    { name: 'tools', items: [ 'UIColor', 'Maximize', 'ShowBlocks' ] } 
+    { name: 'tools', items: [ 'UIColor', 'Maximize', 'ShowBlocks' ] },
+    { 
+        name: 'datetime',           
+        items: [ 'Now', 'Date' ] 
+    }
+
   ];
 
   config.toolbar = "Full";
