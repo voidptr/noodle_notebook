@@ -8,6 +8,8 @@ import datetime
 import html2text
 import markdown2
 
+import imghdr
+
 import signal
 import subprocess
 
@@ -147,7 +149,8 @@ def page_bleh(path,imgpath):
 
     fullpath = (FLATPAGES_ROOT + path + "/" + imgpath)
     resp = make_response(open(fullpath).read())
-    resp.content_type = "image/jpeg"
+    if imghdr.what(fullpath) != None:          
+        resp.content_type = "image/jpeg"
     return resp
 
 # This route will process the AJAX request from the imagebrowser plugin,
