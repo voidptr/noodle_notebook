@@ -8,6 +8,9 @@ import datetime
 import html2text
 import markdown2
 
+import signal
+import subprocess
+
 ## TODO ##
 # add proper path handling with combinining paths and things.
 # add source control (git repo) upon every save
@@ -20,6 +23,8 @@ FLATPAGES_EXTENSION = '.html'
 # ending slash.
 FLATPAGES_ROOT = "../LabNotebooksRepository/"
 
+pro = None
+
 app = Flask(__name__)
 app.config.from_object(__name__)
 pages = FlatPages(app)
@@ -31,6 +36,12 @@ h.body_width = False
 
 #md = markdown2.Markdown()
 
+IPYTHON_START_COMMAND = "ipython notebook --pylab inline"
+#@app.before_first_request
+#def before_first_request():
+#    pro = subprocess.Popen(IPYTHON_START_COMMAND, stdout=subprocess.PIPE, 
+#                           shell=True, preexec_fn=os.setsid, cwd=FLATPAGES_ROOT) 
+#    print pro
 
 # This is a thin wrapper that pretty much does zero rendering
 # on the input text, which we've decided is html.
@@ -204,6 +215,15 @@ def upload():
 
 # Initialize the Flask application
 if __name__ == '__main__':
-    app.config['FLATPAGES_HTML_RENDERER'] = prerender_jinja
+    app.config['FLATPAGES_HTML_RENDERER'] = prerender_jinja    
+
+    pro = None
+
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    # The reloader has already run - do what you want to do here
+         pro = subprocess.Popen(IPYTHON_START_COMMAND, stdout=subprocess.PIPE, 
+                           shell=True, preexec_fn=os.setsid, cwd=FLATPAGES_ROOT)
     app.run()
+
+    os.killpg(pro.pid, signal.SIGTERM)
 
