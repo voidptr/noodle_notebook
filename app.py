@@ -48,7 +48,10 @@ IPYTHON_START_COMMAND = "ipython notebook --pylab inline"
 # This is a thin wrapper that pretty much does zero rendering
 # on the input text, which we've decided is html.
 def prerender_jinja(text):
+    #print "HI"
+    #print text
     prerendered_body = render_template_string(Markup(text))
+#    print prerendered_body
     return pygmented_markdown(prerendered_body)
 
 # This route will troll the flat pages directory
@@ -107,6 +110,11 @@ def page(path):
         currtimestring = now.strftime("%I:%M%p")
         return render_template('newjournal.html', week=weekstring, date=currdatestring, time=currtimestring, title=path)
 
+#    print dir(page)
+#    print page.html
+#    print page.meta
+#    print dir(page.meta)
+
     return render_template('existingjournal.html', page=page, title=path)
 
 
@@ -124,6 +132,17 @@ def save():
     #mdfilename = urlparse(referrer).path.translate(None, '/') + ".md"
     #htmlmdfilename = mdfilename + ".html"
 
+
+    ### IN ORDER TO FIX AN ISSUE WITH FLASK FLATPAGES WHERE IT ASSUMES
+    ### THAT ALL FILES HAVE YAML AND IT WILL EAT IT IF IT ISN'T
+    ### I'm pre-pending a blank line here
+    ### This blank line will ALWAYS get eaten by flask-flatpages
+    ### It won't accumulate because the display dosen't re-fetch saved
+    ### data when it saves. It just shoves over what it has
+    ### This \n will be stripped off if you do a reload, and we begin
+    ### the merry-go-round again.
+    data = '\n' + data
+   
 
     f = open( FLATPAGES_ROOT + filename, 'w')
     f.write(data)
