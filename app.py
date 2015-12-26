@@ -10,9 +10,6 @@ import markdown2
 
 import imghdr
 
-import signal
-import subprocess
-
 ## TODO ##
 # add proper path handling with combinining paths and things.
 # add source control (git repo) upon every save
@@ -25,8 +22,6 @@ FLATPAGES_EXTENSION = '.html'
 # ending slash.
 FLATPAGES_ROOT = "../LabNotebooksRepository/"
 
-pro = None
-
 app = Flask(__name__)
 app.config.from_object(__name__)
 pages = FlatPages(app)
@@ -38,12 +33,6 @@ h.body_width = False
 
 #md = markdown2.Markdown()
 
-IPYTHON_START_COMMAND = "ipython notebook --pylab inline"
-#@app.before_first_request
-#def before_first_request():
-#    pro = subprocess.Popen(IPYTHON_START_COMMAND, stdout=subprocess.PIPE, 
-#                           shell=True, preexec_fn=os.setsid, cwd=FLATPAGES_ROOT) 
-#    print pro
 
 # This is a thin wrapper that pretty much does zero rendering
 # on the input text, which we've decided is html.
@@ -104,18 +93,50 @@ def page(path):
         now = datetime.datetime.now()
         delta = datetime.timedelta(days=now.weekday())
         thisweekdatetime = now - delta
-
+    
         weekstring = thisweekdatetime.strftime("%B %d, %Y")
         currdatestring = now.strftime("%A, %b %d, %Y")
         currtimestring = now.strftime("%I:%M%p")
-        return render_template('newjournal.html', week=weekstring, date=currdatestring, time=currtimestring, title=path)
+        return render_template('newjournal.html', week=weekstring, date=currdatestring, time=currtimestring, title=path)   
 
-#    print dir(page)
-#    print page.html
-#    print page.meta
-#    print dir(page.meta)
 
-    return render_template('existingjournal.html', page=page, title=path)
+
+    ### IN ORDER TO FIX AN ISSUE WITH FLASK FLATPAGES WHERE IT ASSUMES
+    ### THAT ALL FILES HAVE YAML AND WILL EAT ITSELF IF THEY DON'T
+    ### Essentially, the only way to detect it pre-render is that it
+    ### chokes when you try to *ACCESS* page.meta. Fucking shit for brains.
+    ### So, since page.meta is a dict, if it throws an exception, I'm going
+    ### to supply it with a blank dict.
+    ### Then, this dict, which render_template assumes will always be there,
+    ### is helpfully supplied, thus breaking the cycle of code fucking itself
+    ### and me pulling my hair out.
+    try: 
+        print dir(page.meta)
+    except:
+        page.meta = {}
+
+
+#    try:
+#        print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+#        print dir(page)
+#        print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+#        print page.html
+#        print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+#        print dir(page.meta)
+#        print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+#        print page.meta
+#        print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+#        
+#    except:
+#        print "WTF STOPPED HERE"
+        
+    try:
+        return render_template('existingjournal.html', page=page, title=path)
+    except ValueError:
+        return render_template('error.html', page=page, title=path)
+    
+    
+    return render_template('error.html', page=page, title=path)
 
 
 # Route that will process the AJAX request (_save)
@@ -130,19 +151,7 @@ def save():
 
     filename = urlparse(referrer).path.translate(None, '/') + ".html"
     #mdfilename = urlparse(referrer).path.translate(None, '/') + ".md"
-    #htmlmdfilename = mdfilename + ".html"
-
-
-    ### IN ORDER TO FIX AN ISSUE WITH FLASK FLATPAGES WHERE IT ASSUMES
-    ### THAT ALL FILES HAVE YAML AND IT WILL EAT IT IF IT ISN'T
-    ### I'm pre-pending a blank line here
-    ### This blank line will ALWAYS get eaten by flask-flatpages
-    ### It won't accumulate because the display dosen't re-fetch saved
-    ### data when it saves. It just shoves over what it has
-    ### This \n will be stripped off if you do a reload, and we begin
-    ### the merry-go-round again.
-    data = '\n' + data
-   
+    #htmlmdfilename = mdfilename + ".html"   
 
     f = open( FLATPAGES_ROOT + filename, 'w')
     f.write(data)
@@ -239,13 +248,6 @@ def upload():
 if __name__ == '__main__':
     app.config['FLATPAGES_HTML_RENDERER'] = prerender_jinja    
 
-    pro = None
-
-    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-    # The reloader has already run - do what you want to do here
-         pro = subprocess.Popen(IPYTHON_START_COMMAND, stdout=subprocess.PIPE, 
-                           shell=True, preexec_fn=os.setsid, cwd=FLATPAGES_ROOT)
     app.run()
 
-    os.killpg(pro.pid, signal.SIGTERM)
 
