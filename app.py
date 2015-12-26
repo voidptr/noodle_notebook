@@ -151,7 +151,17 @@ def save():
 
     filename = urlparse(referrer).path.translate(None, '/') + ".html"
     #mdfilename = urlparse(referrer).path.translate(None, '/') + ".md"
-    #htmlmdfilename = mdfilename + ".html"   
+    #htmlmdfilename = mdfilename + ".html" 
+    
+    ### IN ORDER TO FIX AN ISSUE WITH FLASK FLATPAGES WHERE IT ASSUMES
+    ### THAT ALL FILES HAVE YAML AND IT WILL EAT IT IF IT ISN'T
+    ### I'm pre-pending a blank line here
+    ### This blank line will ALWAYS get eaten by flask-flatpages
+    ### It won't accumulate because the display dosen't re-fetch saved
+    ### data when it saves. It just shoves over what it has
+    ### This \n will be stripped off if you do a reload, and we begin
+    ### the merry-go-round again.
+    data = '\n' + data
 
     f = open( FLATPAGES_ROOT + filename, 'w')
     f.write(data)
