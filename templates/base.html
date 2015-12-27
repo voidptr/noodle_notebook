@@ -49,7 +49,8 @@ CKEDITOR.timestamp='ABCD';
 
         initial = false;
 
-        var jqxhr = $.getJSON( '/_save', { data: dta }, function(data) {
+        //var jqxhr = $.getJSON( '/_save', { data: dta }, function(data) {
+        var jqxhr = $.post( '/_save', { data: dta }, function(data) {
             lastsaved = dta;
 
             //console.log( "success" );

@@ -141,15 +141,34 @@ def page(path):
 
 # Route that will process the AJAX request (_save)
 # saves to the filename from the referrer.
-@app.route('/_save')
+@app.route('/_save', methods=["GET","POST"])
 def save():
-    data = request.args.get('data', 0, type=str)
 
+    print dir(request.args.values)    
+    
+    #data = request.args.get('data', 0, type=str)
+    data = request.form['data']
+    
+    #for some reason, sometimes a unicode zero width space (\u200) sneaks in
+    data = data.replace(u'\u200b','')
+
+    print "Saving..."
+    print "--------------------------------------------------------------------------------"
+    print data[:100] + "..."
+    #print "    ..."
+    print "..." + data[-100:]
+    print "--------------------------------------------------------------------------------"
+    
     referrer = request.referrer
 
     completefile = render_template("existingjournal.html", page=data)
 
     filename = urlparse(referrer).path.translate(None, '/') + ".html"
+    
+    #print "HELLO"
+    #print data   
+    #print "FUC"
+    
     #mdfilename = urlparse(referrer).path.translate(None, '/') + ".md"
     #htmlmdfilename = mdfilename + ".html" 
     
@@ -161,6 +180,8 @@ def save():
     ### data when it saves. It just shoves over what it has
     ### This \n will be stripped off if you do a reload, and we begin
     ### the merry-go-round again.
+
+    
     data = '\n' + data
 
     f = open( FLATPAGES_ROOT + filename, 'w')
