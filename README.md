@@ -82,3 +82,8 @@ natively supports it, but for now, this is good enough.
 
 If you have any ideas, suggestions, or bug reports, feel free to get in
 touch.
+
+## TODO
+
+- Add mechanism to detect changes to the files that didn't originate,
+and give the user the opportunity to decide what to do (Overwrite, Reload)
