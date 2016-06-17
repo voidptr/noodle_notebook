@@ -5,7 +5,7 @@ jquery to save your lab notebooks locally.
 
 ## installing Noodle
 
-    git clone https://github.com/voidptr/noodle_notebook.git && cd noodle_notebook && git submodule init && git submodule update
+    git clone --recursive https://github.com/voidptr/noodle_notebook.git 
 
 ## Configuring Noodle (DO NOT SKIP)
 

@@ -5,7 +5,7 @@ from urlparse import urlparse
 from flask import Flask, render_template, render_template_string, Markup, request, json, redirect, url_for, jsonify, make_response
 from flask_flatpages import FlatPages, pygmented_markdown
 import datetime
-import html2text
+#import html2text
 import markdown2
 
 import imghdr
@@ -20,16 +20,16 @@ FLATPAGES_EXTENSION = '.html'
 
 # right now, since we have shitty path handling, include the
 # ending slash.
-FLATPAGES_ROOT = "../LabNotebooksRepository/"
+FLATPAGES_ROOT = "/home/rosiec/Dropbox/School_Docs/Projects/LabNotebooksRepository/"
 
 app = Flask(__name__)
 app.config.from_object(__name__)
 pages = FlatPages(app)
 
-h = html2text.HTML2Text()
-#h.ignore_links = True
-#h.ignore_images = True
-h.body_width = False
+#h = html2text.HTML2Text()
+##h.ignore_links = True
+##h.ignore_images = True
+#h.body_width = False
 
 #md = markdown2.Markdown()
 

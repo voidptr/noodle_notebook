@@ -4,3 +4,6 @@
 [submodule "python-markdown2"]
 	path = python-markdown2
 	url = https://github.com/trentm/python-markdown2.git
+[submodule "static/ckeditor/plugins/openlink"]
+	path = static/ckeditor/plugins/openlink
+	url = https://github.com/mlewand/ckeditor-plugin-openlink

@@ -139,7 +139,7 @@ CKEDITOR.timestamp='ABCD';
 		CKEDITOR.disableAutoInline = true;
 
 		CKEDITOR.inline( 'inline1', {
-			extraPlugins: 'sharedspace,allowsave,imagebrowser,button-h1,button-h2,button-h3,button-h4,button-h5,button-h6,simpleuploads,htmlbuttons,sourcedialog,print,allownow5,allowdate',
+			extraPlugins: 'sharedspace,allowsave,imagebrowser,button-h1,button-h2,button-h3,button-h4,button-h5,button-h6,simpleuploads,htmlbuttons,sourcedialog,print,allownow5,allowdate,openlink',
 			removePlugins: 'floatingspace,resize',
 			sharedSpaces: {
 				top: 'top',
@@ -152,6 +152,7 @@ CKEDITOR.timestamp='ABCD';
         CKEDITOR.config.simpleuploads_coverover='border:1px solid red !important;';
         CKEDITOR.config.simpleuploads_dialogover='border:1px solid red !important;';
         CKEDITOR.config.simpleuploads_respectDialogUploads=true;
+	CKEDITOR.config.openlink_modifier = 0
 </script>
 </body>
 </html>
