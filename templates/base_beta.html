@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>{% block title %}{{ title }}{% endblock %}</title>
+<meta charset="UTF-8">
+<script src="/static/jquery/jquery.min.js"></script>
+<link href="/static/jquery/bootstrap.min.css" rel="stylesheet">
+<script src="/static/ckeditor/ckeditor.js"></script>
+<script>
+CKEDITOR.timestamp='ABCD';
+</script>
+<link rel="stylesheet" type="text/css" href="/static/css/main.css">
+<link rel="stylesheet" type="text/css" href="/static/css/normalize.css">
+<link rel="stylesheet" type="text/css" href="/static/css/style.css">
+<link rel="shortcut icon" href="static/img/favicon.gif">
+<script>
+
+    $(document).ready(function(){
+
+    	// Variables
+    	var objMain = $('#main');
+
+    	// Show sidebar
+    	function showSidebar(){
+    		objMain.addClass('use-sidebar');
+    		$.cookie('sidebar-pref2', 'use-sidebar', { expires: 30 });
+    	}
+
+    	// Hide sidebar
+    	function hideSidebar(){
+    		objMain.removeClass('use-sidebar');
+    		$.cookie('sidebar-pref2', null, { expires: 30 });
+    	}
+
+    	// Sidebar separator
+    	var objSeparator = $('#separator');
+
+    	objSeparator.click(function(e){
+    		e.preventDefault();
+    		if ( objMain.hasClass('use-sidebar') ){
+    			hideSidebar();
+    		}
+    		else {
+    			showSidebar();
+    		}
+    	}).css('height', (objSeparator.parent().outerHeight()) + 'px');
+
+    	// Load preference
+    	if ( $.cookie('sidebar-pref2') == null ){
+    		objMain.removeClass('use-sidebar');
+    	}
+    });
+
+    function setMessageDiv(msg)
+    {
+        var el = document.getElementById("message");
+        el.innerHTML = msg;
+    }
+
+    function tempAlert(msg,duration)
+    {
+        var el = document.createElement("div");
+        el.setAttribute("style","position:absolute;top:0%;left:10%;background-color:white;");
+        el.innerHTML = msg;
+        setTimeout(function(){
+          el.parentNode.removeChild(el);
+        },duration);
+        document.body.appendChild(el);
+    }
+
+    var initial = true;
+    var lastsaved;
+    var cke;
+
+    function save(dta)
+    {
+        /* deprecated jquery
+        $.getJSON('/_save', {
+                data: dta,
+            }, function(data) {
+               saved = true;
+               lastsaved = dta
+            });
+        */
+
+        initial = false;
+
+        //var jqxhr = $.getJSON( '/_save', { data: dta }, function(data) {
+        var jqxhr = $.post( '/_save', { data: dta }, function(data) {
+            lastsaved = dta;
+
+            //console.log( "success" );
+        })
+            .done(function() {
+                setTimeout(function(){setMessageDiv("Success!")},500);
+                //console.log( "second success" );
+            })
+            .fail(function() {
+                setTimeout(function(){setMessageDiv("Failed! :(")},500);
+                console.log( "error" );
+            })
+            .always(function() {
+                setTimeout(function(){setMessageDiv("")},2000);
+                console.log( "complete" );
+            });
+        // Perform other work here ...
+        // Set another completion function for the request above
+        jqxhr.complete(function() {
+            //console.log( "second complete" );
+        });
+
+    }
+
+    function autoSave()
+    {
+        var dta = cke.getData();
+
+        if (initial)
+        {
+            lastsaved = dta;
+            initial = false;
+        }
+
+        if (dta != lastsaved)
+        {
+            setMessageDiv("AutoSaving...");
+            save(dta);
+        }
+    }
+
+
+    CKEDITOR.plugins.registered['allowsave'] = {
+      init: function (editor) {
+         var command = editor.addCommand('save',
+         {
+              modes: { wysiwyg: 1, source: 1 },
+              exec: function (editor) { // Add here custom function for the save button
+
+                var dta = editor.getData();
+
+                setMessageDiv("Saving...");
+
+                save(dta);
+              }
+         });
+         editor.ui.addButton && editor.ui.addButton('Save', {
+                label: 'Save',
+                command: 'save',
+                toolbar: 'document,10' });
+         editor.on('blur', function() {
+         });
+         cke = editor; // paradigm breaking, but I can't find better documentation :/
+         lastsaved = editor.getData(); // initialize with the data we have. no need to save
+         setInterval(autoSave, 10000); // autosave every 10 seconds
+
+      }
+    }
+
+
+</script>
+<style>
+    #content {
+
+    }
+    #sidebar {
+        xline-height: 300px;
+        xtext-align: left;
+        border: 1px solid;
+    }
+
+    #sidebar {
+        background-color: #DEF;
+        border-color: #BCD;
+        display: none;
+    }
+    #content {
+        background-color: #EFE;
+        border-color: #CDC;
+        width: 97%;
+    }
+
+    .use-sidebar #content {width: 64%;}
+    .use-sidebar #sidebar {
+        display: block;
+        width: 32%;
+    }
+
+   .sidebar-at-left #sidebar {margin-right: 1%;}
+   .sidebar-at-right #sidebar {margin-left: 1%;}
+
+   .sidebar-at-left #content,
+   .use-sidebar.sidebar-at-right #sidebar,
+   .sidebar-at-right #separator {float: right;}
+   .sidebar-at-right #content,
+   .use-sidebar.sidebar-at-left #sidebar,
+   .sidebar-at-left #separator {float: left;}
+
+   #separator {
+       background-color: #EEE;
+       border: 1px solid #CCC;
+       display: block;
+       outline: none;
+       width: 1%;
+   }
+   .use-sidebar #separator {
+       background: url('img/vertical-separator.gif') repeat-y center top;
+       border-color: #FFF;
+   }
+   #separator:hover {
+       border-color: #ABC;
+       background: #DEF;
+   }
+</style>
+</head>
+<body>
+
+<div class="use-sidebar sidebar-at-left"  id="main" style="height: 100%;">
+  <div id="content" style="height: 100%;">
+    <div id="top"><!-- top toolbar -->
+      <div style="left:0%">{% block title2 %}{{ title }}{% endblock %}</div>
+      <div id="message" style="position:absolute;top:0%;right:1%"></div>
+    </div>
+    <div style="height: calc(100% - 160px);
+        overflow: auto;
+        border: 0px solid #afafaf;
+        padding: 0px 40px;
+        margin: 0px 0px;">
+      <div contenteditable="true" id="inline1"
+        style="height=100%; width: 100%;
+        float: left; border: 0px; outline: none;">
+        {% block content %}
+        {% endblock content %}
+      </div>
+    </div>
+    <div id="bottom"><!--bottom toolbar--></div>
+  </div>
+  <div id="sidebar">[ <a href="/" onclick="if (saved) { return true; } else { return confirm('Are you sure? Unsaved changes...') }">Home</a> ]</div>
+  <a href="#" id="separator"></a>
+  <div id="clearer">&nbsp;</div>
+</div>
+<script>
+
+		// Turn off automatic editor creation first.
+		CKEDITOR.disableAutoInline = true;
+
+		CKEDITOR.inline( 'inline1', {
+			extraPlugins: 'sharedspace,allowsave,imagebrowser,button-h1,button-h2,button-h3,button-h4,button-h5,button-h6,simpleuploads,htmlbuttons,sourcedialog,print,allownow5,allowdate',
+			removePlugins: 'floatingspace,resize',
+			sharedSpaces: {
+				top: 'top',
+				bottom: 'bottom'
+			},
+            imageBrowser_listUrl: "/_browse_images"
+		});
+        CKEDITOR.config.simpleuploads_containerover='border:1px solid red !important;';
+        CKEDITOR.config.simpleuploads_editorover='background-color:yellow !important;';
+        CKEDITOR.config.simpleuploads_coverover='border:1px solid red !important;';
+        CKEDITOR.config.simpleuploads_dialogover='border:1px solid red !important;';
+        CKEDITOR.config.simpleuploads_respectDialogUploads=true;
+</script>
+</body>
+</html>
