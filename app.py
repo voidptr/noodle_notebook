@@ -5,8 +5,8 @@ from urlparse import urlparse
 from flask import Flask, render_template, render_template_string, Markup, request, json, redirect, url_for, jsonify, make_response
 from flask_flatpages import FlatPages, pygmented_markdown
 import datetime
-import html2text
-import markdown2
+#import html2text
+#import markdown2
 
 import imghdr
 
@@ -14,7 +14,7 @@ import imghdr
 # add proper path handling with combinining paths and things.
 # add source control (git repo) upon every save
 
-DEBUG = True
+DEBUG = Trues
 FLATPAGES_AUTO_RELOAD = DEBUG
 FLATPAGES_EXTENSION = '.html'
 
@@ -26,10 +26,10 @@ app = Flask(__name__)
 app.config.from_object(__name__)
 pages = FlatPages(app)
 
-h = html2text.HTML2Text()
+#h = html2text.HTML2Text()
 #h.ignore_links = True
 #h.ignore_images = True
-h.body_width = False
+#h.body_width = False
 
 #md = markdown2.Markdown()
 
