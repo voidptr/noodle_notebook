@@ -13,12 +13,12 @@
                 var newfilename = document.getElementById("newfilename");
                 window.location = "/" + newfilename.value;
                 return false;
-            };          
+            };
         };
-    </script>  
+    </script>
   </head>
-  <body>    
-{% block content %}  
+  <body>
+{% block content %}
 
   <ul>
       <h2>Create a New Page</h2>
@@ -34,12 +34,13 @@
     <h2>Existing Pages</h2>
     {% for page in pages %}
         <li>
-            <a href="{{ url_for("page", path=page.path) }}">{{ page.path }}</a> [ <a href="/_del{{ url_for("page", path=page.path) }}"  onclick="return confirm('Are you sure?')">X</a> ]
+            <a href="{{ url_for("page", path=page.path) }}">{{ page.path }}</a> <a href="/_beta{{ url_for("page", path=page.path) }}">(beta)</a>
+            [ <a href="/_del{{ url_for("page", path=page.path) }}"  onclick="return confirm('Are you sure?')">X</a> ]
         </li>
     {% else %}
         Nothing
     {% endfor %}
     </ul>
-{% endblock content %}    
+{% endblock content %}
   </body>
 </html>

@@ -1,4 +1,4 @@
-#!/usr/local/bin/python 
+#!/usr/local/bin/python
 
 import os
 from urlparse import urlparse
@@ -93,11 +93,11 @@ def page(path):
         now = datetime.datetime.now()
         delta = datetime.timedelta(days=now.weekday())
         thisweekdatetime = now - delta
-    
+
         weekstring = thisweekdatetime.strftime("%B %d, %Y")
         currdatestring = now.strftime("%A, %b %d, %Y")
         currtimestring = now.strftime("%I:%M%p")
-        return render_template('newjournal.html', week=weekstring, date=currdatestring, time=currtimestring, title=path)   
+        return render_template('newjournal.html', week=weekstring, date=currdatestring, time=currtimestring, title=path)
 
 
 
@@ -110,7 +110,7 @@ def page(path):
     ### Then, this dict, which render_template assumes will always be there,
     ### is helpfully supplied, thus breaking the cycle of code fucking itself
     ### and me pulling my hair out.
-    try: 
+    try:
         print dir(page.meta)
     except:
         page.meta = {}
@@ -126,16 +126,54 @@ def page(path):
 #        print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
 #        print page.meta
 #        print "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-#        
+#
 #    except:
 #        print "WTF STOPPED HERE"
-        
+
     try:
         return render_template('existingjournal.html', page=page, title=path)
     except ValueError:
         return render_template('error.html', page=page, title=path)
-    
-    
+
+
+    return render_template('error.html', page=page, title=path)
+
+# this route will display a static page in the pages directory
+# generally, this means a journal file
+# if you pass it a file that doesn't exist, it will start up
+# a new file, but you ahve to save it
+@app.route('/_beta/<path:path>')
+def page_beta(path):
+
+    newpath = path.replace(" ", "_");
+
+    if newpath != path:
+        return redirect(newpath)
+
+    page = pages.get(path)
+
+    if page == None:
+        now = datetime.datetime.now()
+        delta = datetime.timedelta(days=now.weekday())
+        thisweekdatetime = now - delta
+
+        weekstring = thisweekdatetime.strftime("%B %d, %Y")
+        currdatestring = now.strftime("%A, %b %d, %Y")
+        currtimestring = now.strftime("%I:%M%p")
+        return render_template('newjournal_beta.html', week=weekstring, date=currdatestring, time=currtimestring, title=path)
+
+    try:
+        print dir(page.meta)
+    except:
+        page.meta = {}
+
+
+    try:
+        return render_template('existingjournal_beta.html', page=page, title=path)
+    except ValueError:
+        return render_template('error.html', page=page, title=path)
+
+
     return render_template('error.html', page=page, title=path)
 
 
@@ -144,11 +182,11 @@ def page(path):
 @app.route('/_save', methods=["GET","POST"])
 def save():
 
-    print dir(request.args.values)    
-    
+    print dir(request.args.values)
+
     #data = request.args.get('data', 0, type=str)
     data = request.form['data']
-    
+
     #for some reason, sometimes a unicode zero width space (\u200) sneaks in
     data = data.replace(u'\u200b','')
 
@@ -158,20 +196,20 @@ def save():
     #print "    ..."
     print "..." + data[-100:]
     print "--------------------------------------------------------------------------------"
-    
+
     referrer = request.referrer
 
     completefile = render_template("existingjournal.html", page=data)
 
     filename = urlparse(referrer).path.translate(None, '/') + ".html"
-    
+
     #print "HELLO"
-    #print data   
+    #print data
     #print "FUC"
-    
+
     #mdfilename = urlparse(referrer).path.translate(None, '/') + ".md"
-    #htmlmdfilename = mdfilename + ".html" 
-    
+    #htmlmdfilename = mdfilename + ".html"
+
     ### IN ORDER TO FIX AN ISSUE WITH FLASK FLATPAGES WHERE IT ASSUMES
     ### THAT ALL FILES HAVE YAML AND IT WILL EAT IT IF IT ISN'T
     ### I'm pre-pending a blank line here
@@ -181,7 +219,7 @@ def save():
     ### This \n will be stripped off if you do a reload, and we begin
     ### the merry-go-round again.
 
-    
+
     data = '\n' + data
 
     f = open( FLATPAGES_ROOT + filename, 'w')
@@ -208,7 +246,7 @@ def page_bleh(path,imgpath):
 
     fullpath = (FLATPAGES_ROOT + path + "/" + imgpath)
     resp = make_response(open(fullpath).read())
-    if imghdr.what(fullpath) != None:          
+    if imghdr.what(fullpath) != None:
         resp.content_type = "image/jpeg"
     return resp
 
@@ -277,8 +315,6 @@ def upload():
 
 # Initialize the Flask application
 if __name__ == '__main__':
-    app.config['FLATPAGES_HTML_RENDERER'] = prerender_jinja    
+    app.config['FLATPAGES_HTML_RENDERER'] = prerender_jinja
 
     app.run()
-
-
