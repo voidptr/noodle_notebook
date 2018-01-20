@@ -7,6 +7,12 @@ jquery to save your lab notebooks locally.
 
     git clone --recursive https://github.com/voidptr/noodle_notebook.git
 
+If you don't already have the packages flask, flask_flatpages, and markdown2 then you'll need to grab them.
+
+    sudo pip3 install flask
+    sudo pip3 install flask_flatpages
+    sudo pip3 install markdown2
+
 ## Configuring Noodle (DO NOT SKIP)
 
 Configure by editing the headers of app.py. Specifically, you’ll want to
