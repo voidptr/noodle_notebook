@@ -5,7 +5,7 @@ jquery to save your lab notebooks locally.
 
 ## installing Noodle
 
-    git clone --recursive https://github.com/voidptr/noodle_notebook.git 
+    git clone --recursive https://github.com/voidptr/noodle_notebook.git
 
 ## Configuring Noodle (DO NOT SKIP)
 
@@ -27,7 +27,7 @@ To run:
 
 Then, navigate to: <http://127.0.0.1:5000/>
 
-## What is Noodle? 
+## What is Noodle?
 
 Noodle is a flat-file lab notebook that saves your files as plain html
 in the location of your choice.
