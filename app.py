@@ -20,7 +20,7 @@ FLATPAGES_EXTENSION = '.html'
 
 # right now, since we have shitty path handling, include the
 # ending slash.
-FLATPAGES_ROOT = "/home/rosiec/Dropbox/School_Docs/Projects/LabNotebooksRepository/"
+FLATPAGES_ROOT = "/home/rosiec/Dropbox/Science/Projects/LabNotebooksRepository/"
 
 app = Flask(__name__)
 app.config.from_object(__name__)
